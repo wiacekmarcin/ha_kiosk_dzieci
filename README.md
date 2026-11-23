@@ -51,5 +51,28 @@ Podgląd na PC (zrzut ekranu i koniec; `DZIECI_NOW` podstawia czas):
 DZIECI_NOW="2027-04-15 07:20" DZIECI_SCREENSHOT=ekran.png python main.py
 ```
 
+## Gry
+
+Przycisk z padem w menu po prawej otwiera siatkę gier; w każdej grze u góry jest przycisk
+„Wstecz” (do siatki gier).
+
+- **Kółko i krzyżyk** - dwóch graczy na zmianę: Gracz 1 stawia krzyżyki, Gracz 2 kółka;
+  trzy w wierszu, kolumnie albo po skosie wygrywają, pełna plansza to remis. Nowa gra
+  zaczyna się sama po 3 s.
+- **Warcaby** (8x8) i **Szachy** - przyciski z jedną głową (1 gracz, gra z komputerem
+  na poziomie łatwym; dziecko gra białymi) albo dwiema głowami (2 graczy na zmianę, na dole
+  napis, czyja kolej). Stuknięcie pionka lub figury pokazuje możliwe ruchy; ruch to
+  stuknięcie w pole docelowe albo przeciągnięcie pionka palcem.
+  - Warcaby: bicie obowiązkowe i wielokrotne, pionki biją też do tyłu, damka „latająca”.
+    Uproszczenie: nie trzeba wybierać bicia z największą liczbą pionków. Komputer
+    wybiera losowy dozwolony ruch, chętniej z promocją na damkę.
+  - Szachy: pełne zasady - roszada, bicie w przelocie, promocja (na hetmana), szach,
+    mat i pat. Komputer zwykle zbija najcenniejszą figurę, jaką może, poza tym gra losowo.
+- **Rysowanie** - 9 kolorów, 3 grubości pędzla, gumka i „Wyczyść”.
+- **Rzut kostką** - przycisk „Rzuć”: kostka podskakuje i się obraca, po 1 s pokazuje
+  wylosowaną liczbę 1-6 jako ściankę z kropkami.
+
+Zasady gier są w `dzieci/games` bez zależności od ekranu (szachy sprawdzone testem perft).
+Figury szachowe: czcionka DejaVu Sans (`assets/fonts_dzieci`, licencja w LICENSE-DejaVu.txt).
 Obrazki: [Twemoji](https://github.com/jdecked/twemoji) (CC-BY 4.0), pobierane i
 przerabiane na PNG przez `tools/make_icons.sh`.

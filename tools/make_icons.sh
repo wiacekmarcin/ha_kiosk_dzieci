@@ -24,6 +24,11 @@ declare -A ICONS=(
   [wiosna]=1f337         # tulipan
   [lato]=2600            # słońce
   [jesien]=1f342         # opadające liście
+  [gra_kolko]=23-20e3    # krzyżyk w kratce (#) - kółko i krzyżyk
+  [gra_warcaby]=1f3c1    # flaga w szachownicę - warcaby
+  [gra_szachy]=265f      # pionek szachowy
+  [gra_paint]=1f3a8      # paleta malarza - rysowanie
+  [gra_kostka]=1f3b2     # kostka do gry
 )
 for name in "${!ICONS[@]}"; do
   code=${ICONS[$name]}

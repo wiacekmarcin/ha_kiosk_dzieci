@@ -1,13 +1,18 @@
 #:import icons kiosk.icons
+#:import paint dzieci.games.paint
 
 # Kolory ekranu dzieci
 #:set RAIL_BG (0.16, 0.19, 0.29, 1)
 #:set WARM (1.0, 0.84, 0.40, 1)
 #:set TEXT (0.95, 0.95, 0.98, 1)
+#:set TILE (0.20, 0.24, 0.36, 1)
+#:set ICONS_DIR "assets/icons/"
 
-# Pozycja menu z ikoną (dom, słuchawka) - target: akcja w DzieciApp.nav
+# Pozycja menu z ikoną (dom, słuchawka, gry) - target: akcja w DzieciApp.nav;
+# code - znak z czcionki ikon, gdy ikony nie ma w słowniku kiosku
 <RailButton@ButtonBehavior+AnchorLayout>:
     icon: ""
+    code: 0
     target: ""
     size_hint_y: None
     height: 110
@@ -20,7 +25,7 @@
             size: 88, 88
             radius: [26]
     Label:
-        text: icons.glyph(root.icon)
+        text: chr(root.code) if root.code else icons.glyph(root.icon)
         font_name: icons.FONT_NAME
         font_size: "52sp"
         color: WARM
@@ -41,6 +46,127 @@
     size_hint_y: None
     height: 60
 
+# --- gry ---------------------------------------------------------------------------------
+# Kafelek gry w siatce: obrazek i nazwa
+<GameTile@ButtonBehavior+BoxLayout>:
+    image: ""
+    title: ""
+    target: ""
+    orientation: "vertical"
+    padding: 18
+    spacing: 10
+    on_release: app.nav(self.target)
+    canvas.before:
+        Color:
+            rgba: (0.30, 0.36, 0.52, 1) if self.state == "down" else TILE
+        RoundedRectangle:
+            pos: self.pos
+            size: self.size
+            radius: [28]
+    Image:
+        source: (ICONS_DIR + root.image) if root.image else ""
+        fit_mode: "contain"
+    Label:
+        text: root.title
+        font_size: "30sp"
+        bold: True
+        color: TEXT
+        size_hint_y: None
+        height: 60
+
+# Przycisk z napisem w pasku gry (Nowa gra, Wyczyść)
+<BarButton@ButtonBehavior+Label>:
+    size_hint: None, None
+    size: 200, 64
+    font_size: "24sp"
+    bold: True
+    color: TEXT
+    canvas.before:
+        Color:
+            rgba: (0.30, 0.36, 0.52, 1) if self.state == "down" else TILE
+        RoundedRectangle:
+            pos: self.pos
+            size: self.size
+            radius: [32]
+
+# Pasek u góry każdej gry: Wstecz (do siatki gier), tytuł, miejsce na przycisk
+<GameBar@BoxLayout>:
+    title: ""
+    size_hint_y: None
+    height: 84
+    padding: [16, 10]
+    spacing: 16
+    CloseButton:
+        on_release: app.nav("games")
+    Label:
+        text: root.title
+        font_size: "32sp"
+        bold: True
+        color: WARM
+
+# Wybór trybu: 1 gracz (gra z komputerem) albo 2 graczy; zaznaczony jest podświetlony
+<ModeButton@ButtonBehavior+BoxLayout>:
+    game: None
+    players: 1
+    active: False       # ustawiane przy użyciu: active: <gra>.players == <liczba graczy>
+    size_hint: None, None
+    size: 96, 64
+    on_release: if self.game: self.game.players = self.players
+    canvas.before:
+        Color:
+            rgba: WARM if self.active else TILE
+        RoundedRectangle:
+            pos: self.pos
+            size: self.size
+            radius: [32]
+    Label:
+        # account / account-multiple z Material Design Icons (jedna i dwie głowy)
+        text: chr(0xF0004) if root.players == 1 else chr(0xF000E)
+        font_name: icons.FONT_NAME
+        font_size: "40sp"
+        color: (0.10, 0.10, 0.12, 1) if root.active else TEXT
+
+# Napis pod planszą: czyj ruch, kto wygrał
+<GameStatus@Label>:
+    font_size: "32sp"
+    bold: True
+    color: TEXT
+    size_hint_y: None
+    height: 70
+
+# Kolor w palecie Paint (zaznaczony ma obwódkę)
+<Swatch>:
+    size_hint: None, None
+    size: 64, 64
+    canvas:
+        Color:
+            rgba: WARM if (self.paint and self.paint.tool == "pen" and list(self.paint.color) == list(self.rgba)) else (0, 0, 0, 0)
+        Ellipse:
+            pos: self.x, self.y
+            size: self.size
+        Color:
+            rgba: self.rgba
+        Ellipse:
+            pos: self.x + 6, self.y + 6
+            size: self.width - 12, self.height - 12
+
+# Grubość pędzla (kropka o danej wielkości)
+<BrushButton>:
+    size_hint: None, None
+    size: 64, 64
+    canvas:
+        Color:
+            rgba: (0.30, 0.36, 0.52, 1) if (self.paint and self.paint.brush == self.brush) else TILE
+        RoundedRectangle:
+            pos: self.pos
+            size: self.size
+            radius: [18]
+        Color:
+            rgba: TEXT
+        Ellipse:
+            pos: self.center_x - self.brush, self.center_y - self.brush
+            size: self.brush * 2, self.brush * 2
+
 BoxLayout:
     orientation: "horizontal"
 
@@ -49,7 +175,7 @@ BoxLayout:
         Screen:
             name: "start"
             BoxLayout:
-                padding: [18, 0]
+                padding: [16, 0]
                 spacing: 18
                 BoxLayout:
                     orientation: "vertical"
@@ -57,10 +183,10 @@ BoxLayout:
                     Widget:
                     DayClock:
                         id: day
-                        # dotknięcie tarczy powtarza komunikat bieżącej czynności
-                        on_touch_down: app.announcer.say() if self.collide_point(*args[1].pos) else None
                         size_hint_y: None
                         height: self.width
+                        # dotknięcie tarczy powtarza komunikat bieżącej czynności
+                        on_touch_down: app.announcer.say() if self.collide_point(*args[1].pos) else None
                     Caption:
                         text: day.caption
                     Widget:
@@ -89,7 +215,195 @@ BoxLayout:
                         text: season.caption
                     Widget:
 
-    # Menu po prawej: dom, godzina, data, słuchawka (pod spodem miejsce na kolejne programy)
+        # siatka gier
+        Screen:
+            name: "games"
+            BoxLayout:
+                orientation: "vertical"
+                BoxLayout:
+                    size_hint_y: None
+                    height: 84
+                    padding: [16, 10]
+                    spacing: 16
+                    CloseButton:
+                        on_release: app.nav("home")
+                    Label:
+                        text: "Gry"
+                        font_size: "32sp"
+                        bold: True
+                        color: WARM
+                GridLayout:
+                    cols: 3
+                    padding: [40, 20, 40, 40]
+                    spacing: 30
+                    GameTile:
+                        image: "gra_kolko.png"
+                        title: "Kółko i krzyżyk"
+                        target: "tictactoe"
+                    GameTile:
+                        image: "gra_warcaby.png"
+                        title: "Warcaby"
+                        target: "checkers"
+                    GameTile:
+                        image: "gra_szachy.png"
+                        title: "Szachy"
+                        target: "chess"
+                    GameTile:
+                        image: "gra_paint.png"
+                        title: "Rysowanie"
+                        target: "paint"
+                    GameTile:
+                        image: "gra_kostka.png"
+                        title: "Rzut kostką"
+                        target: "dice"
+                    Widget:
+
+        Screen:
+            name: "tictactoe"
+            BoxLayout:
+                orientation: "vertical"
+                GameBar:
+                    title: "Kółko i krzyżyk"
+                TicTacToe:
+                    id: ttt
+                GameStatus:
+                    text: ttt.status
+
+        Screen:
+            name: "checkers"
+            BoxLayout:
+                orientation: "vertical"
+                GameBar:
+                    title: "Warcaby"
+                    ModeButton:
+                        game: checkers
+                        players: 1
+                        active: checkers.players == 1
+                    ModeButton:
+                        game: checkers
+                        players: 2
+                        active: checkers.players == 2
+                    BarButton:
+                        text: "Nowa gra"
+                        on_release: checkers.new_game()
+                Checkers:
+                    id: checkers
+                GameStatus:
+                    text: checkers.status
+
+        Screen:
+            name: "chess"
+            BoxLayout:
+                orientation: "vertical"
+                GameBar:
+                    title: "Szachy"
+                    ModeButton:
+                        game: chess
+                        players: 1
+                        active: chess.players == 1
+                    ModeButton:
+                        game: chess
+                        players: 2
+                        active: chess.players == 2
+                    BarButton:
+                        text: "Nowa gra"
+                        on_release: chess.new_game()
+                Chess:
+                    id: chess
+                GameStatus:
+                    text: chess.status
+
+        Screen:
+            name: "dice"
+            BoxLayout:
+                orientation: "vertical"
+                GameBar:
+                    title: "Rzut kostką"
+                Dice:
+                    id: dice
+                GameStatus:
+                    text: dice.status
+                AnchorLayout:
+                    size_hint_y: None
+                    height: 120
+                    BarButton:
+                        text: "Rzuć"
+                        size: 320, 96
+                        font_size: "40sp"
+                        disabled: dice.rolling
+                        opacity: 0.5 if dice.rolling else 1
+                        on_release: dice.roll()
+
+        Screen:
+            name: "paint"
+            BoxLayout:
+                orientation: "vertical"
+                GameBar:
+                    title: "Rysowanie"
+                    BarButton:
+                        text: "Wyczyść"
+                        on_release: canvas_paint.clear()
+                StencilView:
+                    PaintCanvas:
+                        id: canvas_paint
+                        pos: self.parent.pos
+                        size: self.parent.size
+                BoxLayout:
+                    size_hint_y: None
+                    height: 84
+                    padding: [16, 10]
+                    spacing: 10
+                    Swatch:
+                        rgba: paint.COLORS[0]
+                        paint: canvas_paint
+                    Swatch:
+                        rgba: paint.COLORS[1]
+                        paint: canvas_paint
+                    Swatch:
+                        rgba: paint.COLORS[2]
+                        paint: canvas_paint
+                    Swatch:
+                        rgba: paint.COLORS[3]
+                        paint: canvas_paint
+                    Swatch:
+                        rgba: paint.COLORS[4]
+                        paint: canvas_paint
+                    Swatch:
+                        rgba: paint.COLORS[5]
+                        paint: canvas_paint
+                    Swatch:
+                        rgba: paint.COLORS[6]
+                        paint: canvas_paint
+                    Swatch:
+                        rgba: paint.COLORS[7]
+                        paint: canvas_paint
+                    Swatch:
+                        rgba: paint.COLORS[8]
+                        paint: canvas_paint
+                    Widget:
+                    BrushButton:
+                        brush: paint.SIZES[0]
+                        paint: canvas_paint
+                    BrushButton:
+                        brush: paint.SIZES[1]
+                        paint: canvas_paint
+                    BrushButton:
+                        brush: paint.SIZES[2]
+                        paint: canvas_paint
+                    BarButton:
+                        text: "Gumka"
+                        size: 150, 64
+                        color: (0.10, 0.10, 0.12, 1) if canvas_paint.tool == "eraser" else TEXT
+                        on_release: canvas_paint.tool = "eraser"
+                        canvas.before:
+                            Color:
+                                rgba: WARM if canvas_paint.tool == "eraser" else (0, 0, 0, 0)
+                            RoundedRectangle:
+                                pos: self.pos
+                                size: self.size
+                                radius: [32]
+
+    # Menu po prawej: dom, godzina, data, słuchawka, gry
     BoxLayout:
         orientation: "vertical"
         size_hint_x: None
@@ -115,4 +429,8 @@ BoxLayout:
         RailButton:
             icon: "phone"
             target: "voice"
+        RailButton:
+            # gamepad-variant z Material Design Icons
+            code: 0xF0297
+            target: "games"
         Widget:

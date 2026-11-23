@@ -43,6 +43,8 @@ from kivy.properties import StringProperty  # noqa: E402
 
 from dzieci import clocks  # noqa: E402 - klasy zegarów dla ekran.kv
 from dzieci.announce import DayAnnouncer  # noqa: E402
+from dzieci.games import chess, checkers, dice, paint, tictactoe  # noqa: E402,F401 - klasy gier dla ekran.kv
+from kivy.uix.screenmanager import NoTransition  # noqa: E402
 from kiosk import icons, voice  # noqa: E402
 from kiosk.widgets.voice_dialog import VoiceDialog  # noqa: E402
 
@@ -112,11 +114,17 @@ class DzieciApp(App):
 
     # --- menu -------------------------------------------------------------------------
     def nav(self, target: str):
+        """Menu i przyciski: home - ekran startowy, voice - wiadomość głosowa,
+        games - siatka gier, inna nazwa - ekran gry (tictactoe, checkers, chess, paint)."""
         if target == "voice":
             VoiceDialog().open()
-        elif target == "home":
-            self.section = "home"
-            self.root.ids.sm.current = "start"
+            return
+        sm = self.root.ids.sm
+        screen = "start" if target == "home" else target
+        if sm.has_screen(screen):
+            sm.transition = NoTransition()
+            sm.current = screen
+            self.section = "home" if screen == "start" else "games"
 
     def _on_message(self, info, path):
         """Nowa wiadomość od innego tabletu: zapowiedź (gong + głos) i nagranie."""
