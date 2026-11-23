@@ -27,7 +27,7 @@ TEXTS = {
     "plac_zabaw": "Czas na plac zabaw.",
     "kolacja": "Czas na kolację.",
     "kapiel": "Czas na mycie przed snem.",
-    "pidzama": "Czas założyć piżamkę.",
+    "ksiazka": "Czas na czytanie książki.",
 }
 GONG = ("0.32*(1-exp(-400*t))*exp(-2.2*t)*(sin(2*PI*659*t)+0.5*sin(2*PI*1318*t)+0.25*sin(2*PI*1977*t))"
         "+0.32*gt(t,0.65)*(1-exp(-400*(t-0.65)))*exp(-1.8*(t-0.65))"

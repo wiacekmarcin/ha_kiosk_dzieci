@@ -35,7 +35,7 @@ _EVENING = [
     Activity("kolacja", "Kolacja", _m("19:00"), _m("19:15")),
     Activity("kapiel", "Mycie", _m("19:15"), _m("19:30")),
     Activity("zeby", "Mycie zębów", _m("19:30"), _m("19:45")),
-    Activity("pidzama", "Ubieranie piżamki", _m("19:45"), _m("20:00")),
+    Activity("ksiazka", "Czytanie książki", _m("19:45"), _m("20:00")),
 ]
 # Kolejność na tarczy od góry, zgodnie z ruchem wskazówek zegara.
 WEEKDAY_PLAN = _MORNING + [

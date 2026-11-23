@@ -24,7 +24,7 @@ Trzy zegary:
   | Kolacja | 19:00-19:15 | 19:00-19:15 |
   | Mycie | 19:15-19:30 | 19:15-19:30 |
   | Mycie zębów | 19:30-19:45 | 19:30-19:45 |
-  | Ubieranie piżamki | 19:45-20:00 | 19:45-20:00 |
+  | Czytanie książki | 19:45-20:00 | 19:45-20:00 |
 
   Przy zmianie czynności tablet mówi, co teraz (gong i np. „Czas na śniadanie”);
   dotknięcie tarczy powtarza komunikat. Nagrania w `assets/komunikaty` robi
