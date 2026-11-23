@@ -21,6 +21,8 @@ COLORS = [
 ]
 PAPER = (1, 1, 1, 1)
 SIZES = [4, 10, 22]
+MIN_STEP = 3            # px - bliższe punkty pomijane (palec stoi, ekran drży)
+MAX_POINTS = 200        # punktów w jednym odcinku kreski; dłuższa kreska to kilka odcinków
 
 
 class PaintCanvas(Widget):
@@ -44,22 +46,34 @@ class PaintCanvas(Widget):
     def on_touch_down(self, touch):
         if not self.collide_point(*touch.pos):
             return super().on_touch_down(touch)
-        color = PAPER if self.tool == "eraser" else self.color
+        color = PAPER if self.tool == "eraser" else tuple(self.color)
         width = self.brush * (2.5 if self.tool == "eraser" else 1)
         with self.canvas:
             Color(*color)
             d = width * 2
             Ellipse(pos=(touch.x - width, touch.y - width), size=(d, d))   # kropka przy stuknięciu
-            touch.ud["paint_line"] = Line(points=[touch.x, touch.y], width=width,
-                                          cap="round", joint="round")
+        # kreska powstaje dopiero przy ruchu palca, z punktów oddalonych o MIN_STEP px
+        touch.ud["paint"] = {"line": None, "last": touch.pos, "color": color, "width": width}
         touch.grab(self)
         return True
 
     def on_touch_move(self, touch):
-        line = touch.ud.get("paint_line")
-        if touch.grab_current is not self or line is None:
+        stroke = touch.ud.get("paint")
+        if touch.grab_current is not self or stroke is None:
             return super().on_touch_move(touch)
-        line.points += [touch.x, touch.y]
+        lx, ly = stroke["last"]
+        if abs(touch.x - lx) < MIN_STEP and abs(touch.y - ly) < MIN_STEP:
+            return True                 # palec stoi - bez powtarzania tych samych punktów
+        line = stroke["line"]
+        if line is None or len(line.points) >= MAX_POINTS * 2:
+            # nowy odcinek od ostatniego punktu: krótkie linie zamiast jednej bardzo długiej
+            with self.canvas:
+                Color(*stroke["color"])
+                stroke["line"] = Line(points=[lx, ly, touch.x, touch.y], width=stroke["width"],
+                                      cap="round", joint="round")
+        else:
+            line.points += [touch.x, touch.y]
+        stroke["last"] = touch.pos
         return True
 
     def on_touch_up(self, touch):

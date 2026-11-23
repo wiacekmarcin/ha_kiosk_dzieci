@@ -213,6 +213,10 @@ class Checkers(BoardWidget):
             self.status = self._name(self.player) + " - bij dalej"
             self.redraw()
 
+    def _current_square(self):
+        """Pole wybranego pionka (w trakcie bicia wielokrotnego - pole po ostatnim skoku)."""
+        return self.candidates[0]["path"][self.step] if self.candidates else self.selected
+
     def redraw(self):
         c = self.cell
         self.canvas.clear()
