@@ -2,7 +2,9 @@
 
 Sprawdza co ANNOUNCE_CHECK s, czy zmieniła się czynność z planu dnia; przy starcie
 aplikacji nic nie mówi (zapamiętuje tylko bieżącą czynność). Nagrania leżą w
-assets/komunikaty (tools/make_sounds.py), odtwarza je odtwarzacz domofonu (voice.Player).
+assets/komunikaty (tools/make_sounds.py). Odtwarza je wspólna kolejka komunikatów
+(voice.Player z kiosku): komunikat pory dnia i wiadomość głosowa nie przerywają się
+nawzajem, tylko grają po kolei.
 """
 from pathlib import Path
 
