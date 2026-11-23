@@ -1,0 +1,116 @@
+#:import icons kiosk.icons
+
+# Kolory ekranu dzieci
+#:set RAIL_BG (0.16, 0.19, 0.29, 1)
+#:set WARM (1.0, 0.84, 0.40, 1)
+#:set TEXT (0.95, 0.95, 0.98, 1)
+
+# Pozycja menu z ikoną (dom, słuchawka) - target: akcja w DzieciApp.nav
+<RailButton@ButtonBehavior+AnchorLayout>:
+    icon: ""
+    target: ""
+    size_hint_y: None
+    height: 110
+    on_release: app.nav(self.target)
+    canvas.before:
+        Color:
+            rgba: (1, 1, 1, 0.20) if self.state == "down" else (1, 1, 1, 0.07)
+        RoundedRectangle:
+            pos: self.center_x - 44, self.center_y - 44
+            size: 88, 88
+            radius: [26]
+    Label:
+        text: icons.glyph(root.icon)
+        font_name: icons.FONT_NAME
+        font_size: "52sp"
+        color: WARM
+        size_hint: None, None
+        size: self.texture_size
+
+<RailText@Label>:
+    size_hint_y: None
+    height: 80
+    bold: True
+    color: TEXT
+
+# Podpis pod zegarem (bieżąca czynność, dzień tygodnia, pora roku)
+<Caption@Label>:
+    font_size: "34sp"
+    bold: True
+    color: WARM
+    size_hint_y: None
+    height: 60
+
+BoxLayout:
+    orientation: "horizontal"
+
+    ScreenManager:
+        id: sm
+        Screen:
+            name: "start"
+            BoxLayout:
+                padding: [18, 0]
+                spacing: 18
+                BoxLayout:
+                    orientation: "vertical"
+                    spacing: 14
+                    Widget:
+                    DayClock:
+                        id: day
+                        size_hint_y: None
+                        height: self.width
+                    Caption:
+                        text: day.caption
+                    Widget:
+                BoxLayout:
+                    orientation: "vertical"
+                    spacing: 14
+                    size_hint_x: 1.12
+                    Widget:
+                    AnalogClock:
+                        id: analog
+                        size_hint_y: None
+                        height: self.width
+                    Caption:
+                        text: analog.caption
+                        color: TEXT
+                    Widget:
+                BoxLayout:
+                    orientation: "vertical"
+                    spacing: 14
+                    Widget:
+                    SeasonClock:
+                        id: season
+                        size_hint_y: None
+                        height: self.width
+                    Caption:
+                        text: season.caption
+                    Widget:
+
+    # Menu po prawej: dom, godzina, data, słuchawka (pod spodem miejsce na kolejne programy)
+    BoxLayout:
+        orientation: "vertical"
+        size_hint_x: None
+        width: 128
+        padding: [0, 18]
+        spacing: 6
+        canvas.before:
+            Color:
+                rgba: RAIL_BG
+            Rectangle:
+                pos: self.pos
+                size: self.size
+        RailButton:
+            icon: "home"
+            target: "home"
+        RailText:
+            text: app.time_text
+            font_size: "40sp"
+        RailText:
+            text: app.date_text
+            font_size: "34sp"
+            color: WARM
+        RailButton:
+            icon: "phone"
+            target: "voice"
+        Widget:

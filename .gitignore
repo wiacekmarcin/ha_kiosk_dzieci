@@ -1,0 +1,12 @@
+# kopia wspólnego kodu i zasobów z ha_kiosk_hol (sync_kiosk.sh przed budowaniem)
+kiosk/
+assets/fonts/
+assets/sounds/
+# adres i token Home Assistant - nigdy do repozytorium
+settings.json
+# budowanie
+.buildozer/
+bin/
+__pycache__/
+*.pyc
+.venv/
