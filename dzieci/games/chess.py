@@ -227,9 +227,6 @@ class Chess(BoardWidget):
     def computer_turn(self):
         return self.state["turn"] == COMPUTER
 
-    def can_drag(self, row, col):
-        return self.selected == (row, col)
-
     def ai_move(self):
         """Poziom łatwy: zwykle bije najcenniejszą figurę, a poza tym ruch losowy."""
         if self.finished or not self.moves:
@@ -299,7 +296,6 @@ class Chess(BoardWidget):
                             size=(c, c), pos=self.cell_pos(r, col))
                 self.add_widget(lbl)
                 self._labels[(r, col)] = lbl
-        self.redraw_drag()
         self.canvas.after.clear()
         if self.selected is not None:
             with self.canvas.after:
@@ -307,14 +303,3 @@ class Chess(BoardWidget):
                 for m in self.moves:
                     if (m[0], m[1]) == self.selected:
                         cx, cy = self.cell_center(m[2], m[3])
-                        Ellipse(pos=(cx - c * 0.14, cy - c * 0.14), size=(c * 0.28, c * 0.28))
-
-    def redraw_drag(self):
-        """Przeciągana figura jedzie za palcem (przesuwany jest tylko jej napis)."""
-        if self.drag_from is None or self.drag_xy is None:
-            return
-        lbl = self._labels.get(self.drag_from)
-        if lbl is not None:
-            lbl.center = self.drag_xy
-            self.remove_widget(lbl)         # na wierzch, nad innymi figurami
-            self.add_widget(lbl)

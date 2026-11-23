@@ -61,8 +61,8 @@ Przycisk z padem w menu po prawej otwiera siatkę gier; w każdej grze u góry j
   zaczyna się sama po 3 s.
 - **Warcaby** (8x8) i **Szachy** - przyciski z jedną głową (1 gracz, gra z komputerem
   na poziomie łatwym; dziecko gra białymi) albo dwiema głowami (2 graczy na zmianę, na dole
-  napis, czyja kolej). Stuknięcie pionka lub figury pokazuje możliwe ruchy; ruch to
-  stuknięcie w pole docelowe albo przeciągnięcie pionka palcem.
+  napis, czyja kolej). Stuknięcie pionka lub figury pokazuje zielone kropki na
+  dozwolonych polach; dopiero stuknięcie w pole z kropką przesuwa pionek.
   - Warcaby: bicie obowiązkowe i wielokrotne, pionki biją też do tyłu, damka „latająca”.
     Uproszczenie: nie trzeba wybierać bicia z największą liczbą pionków. Komputer
     wybiera losowy dozwolony ruch, chętniej z promocją na damkę.

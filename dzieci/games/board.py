@@ -1,9 +1,8 @@
 """Wspólna podstawa gier planszowych: kwadratowa plansza wyśrodkowana w widżecie,
-stukanie w pola, przeciąganie pionka palcem i tryb gry (1 gracz z komputerem / 2 graczy).
+stukanie w pola i tryb gry (1 gracz z komputerem / 2 graczy).
 
-Przeciąganie: dotknięcie pionka wybiera go (jak stuknięcie) i pokazuje możliwe ruchy;
-gdy palec przesunie się po ekranie, pionek jedzie za palcem, a puszczenie nad innym
-polem działa jak stuknięcie w to pole (ruch, jeśli jest dozwolony).
+Ruch zawsze dwoma stuknięciami: stuknięcie pionka pokazuje zielone kropki na dozwolonych
+polach, stuknięcie w pole z kropką przesuwa pionek (bez przeciągania palcem).
 """
 from kivy.clock import Clock
 from kivy.properties import NumericProperty, StringProperty
@@ -19,8 +18,6 @@ class BoardWidget(Widget):
     players = NumericProperty(2)        # 1 - gra z komputerem, 2 - dwóch graczy
 
     def __init__(self, **kwargs):
-        self.drag_from = None           # pole przeciąganego pionka
-        self.drag_xy = None             # pozycja palca przy przeciąganiu
         self._ai_event = None
         super().__init__(**kwargs)
         self.bind(pos=self._redraw, size=self._redraw)
@@ -58,38 +55,13 @@ class BoardWidget(Widget):
             return row, col
         return None
 
-    # --- dotyk: stuknięcie i przeciąganie ---------------------------------------------------
+    # --- dotyk: tylko stuknięcia ------------------------------------------------------------
     def on_touch_down(self, touch):
         if not self.collide_point(*touch.pos):
             return super().on_touch_down(touch)
         pos = self.cell_at(*touch.pos)
         if pos is not None and self.human_turn():
             self.tap(*pos)
-            if self.can_drag(*pos):
-                touch.grab(self)
-                touch.ud["board_from"] = pos
-        return True
-
-    def on_touch_move(self, touch):
-        if touch.grab_current is not self:
-            return super().on_touch_move(touch)
-        start = touch.ud.get("board_from")
-        if start is not None and self.can_drag(*start):
-            self.drag_from, self.drag_xy = start, touch.pos
-            self.redraw_drag()
-        return True
-
-    def on_touch_up(self, touch):
-        if touch.grab_current is not self:
-            return super().on_touch_up(touch)
-        touch.ungrab(self)
-        start = touch.ud.get("board_from")
-        dragged = self.drag_from is not None
-        self.drag_from = self.drag_xy = None
-        pos = self.cell_at(*touch.pos)
-        if dragged and pos is not None and pos != start:
-            self.tap(*pos)
-        self.redraw()                   # pionek wraca na pole, gdy ruch był niedozwolony
         return True
 
     # --- tryb gry i komputer ------------------------------------------------------------------
@@ -116,9 +88,6 @@ class BoardWidget(Widget):
     def tap(self, row: int, col: int):
         raise NotImplementedError
 
-    def can_drag(self, row: int, col: int) -> bool:
-        return False
-
     def computer_turn(self) -> bool:
         return False
 
@@ -130,6 +99,3 @@ class BoardWidget(Widget):
 
     def redraw(self):
         raise NotImplementedError
-
-    def redraw_drag(self):
-        self.redraw()

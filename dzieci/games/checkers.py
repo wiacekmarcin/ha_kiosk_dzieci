@@ -176,9 +176,6 @@ class Checkers(BoardWidget):
     def computer_turn(self):
         return self.player == COMPUTER
 
-    def can_drag(self, row, col):
-        return self.selected is not None and (row, col) == self._current_square()
-
     def ai_move(self):
         """Poziom łatwy: losowy dozwolony ruch, chętniej z promocją na damkę."""
         if self.finished or not self.moves:
@@ -216,9 +213,6 @@ class Checkers(BoardWidget):
             self.status = self._name(self.player) + " - bij dalej"
             self.redraw()
 
-    def _current_square(self):
-        return self.candidates[0]["path"][self.step] if self.candidates else self.selected
-
     def redraw(self):
         c = self.cell
         self.canvas.clear()
@@ -227,7 +221,6 @@ class Checkers(BoardWidget):
             captured = set(self.candidates[0]["captured"][:self.step])
         moving_from = self.selected if self.step else None
         here = self._current_square()
-        hidden = here if (self.drag_xy is not None and here is not None) else moving_from
         with self.canvas:
             for r in range(N):
                 for col in range(N):
@@ -241,29 +234,24 @@ class Checkers(BoardWidget):
             for r in range(N):
                 for col in range(N):
                     piece = self.board[r][col]
-                    if piece is None or (r, col) in (moving_from, hidden):
+                    if piece is None or (r, col) == moving_from:
                         continue
                     self._piece(r, col, piece, 0.35 if (r, col) in captured else 1.0)
-            dragging = self.drag_xy is not None and here is not None
-            if moving_from is not None and not dragging:
+            if moving_from is not None:
                 self._piece(here[0], here[1], self.board[moving_from[0]][moving_from[1]], 1.0)
             if here is not None:
                 Color(*SELECT)
                 x, y = self.cell_pos(*here)
                 Line(rectangle=(x + 3, y + 3, c - 6, c - 6), width=3)
-                Color(*TARGET)
+                Color(*TARGET)                      # zielone kropki: dozwolone pola
                 for target in {m["path"][self.step + 1] for m in self.candidates}:
                     cx, cy = self.cell_center(*target)
                     Ellipse(pos=(cx - c * 0.15, cy - c * 0.15), size=(c * 0.3, c * 0.3))
-            if dragging:                    # pionek jedzie za palcem
-                origin = moving_from if moving_from is not None else here
-                self._piece(here[0], here[1], self.board[origin[0]][origin[1]], 1.0,
-                            center=self.drag_xy)
 
-    def _piece(self, r, col, piece, alpha, center=None):
+    def _piece(self, r, col, piece, alpha):
         player, king = piece
         c = self.cell
-        cx, cy = center or self.cell_center(r, col)
+        cx, cy = self.cell_center(r, col)
         rad = c * 0.38
         Color(*RIM[player][:3], alpha)
         Ellipse(pos=(cx - rad, cy - rad), size=(2 * rad, 2 * rad))
