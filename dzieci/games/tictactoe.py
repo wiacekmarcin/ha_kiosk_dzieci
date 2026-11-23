@@ -1,6 +1,9 @@
 """Kółko i krzyżyk: Gracz 1 stawia krzyżyki, Gracz 2 kółka. Trzy znaki w wierszu,
 kolumnie albo po skosie wygrywają; pełna plansza bez trójki to remis. Po końcu partii
-nowa gra zaczyna się sama po RESTART_SECONDS."""
+nowa gra zaczyna się sama po RESTART_SECONDS.
+
+Tryby: dwóch graczy na jednym tablecie albo gra przez sieć z innym tabletem (krzyżykami
+gra tablet, który zaprosił). Ruch w sieci to numer pola 0-8."""
 from kivy.clock import Clock
 from kivy.graphics import Color, Line, Rectangle, RoundedRectangle
 
@@ -13,7 +16,6 @@ GRID = (0.30, 0.34, 0.48, 1)
 X_COLOR = (0.85, 0.27, 0.27, 1)
 O_COLOR = (0.20, 0.45, 0.85, 1)
 WIN = (1.0, 0.62, 0.18, 1)
-NAMES = ["Gracz 1 (krzyżyk)", "Gracz 2 (kółko)"]
 
 
 def winner(cells):
@@ -27,6 +29,8 @@ def winner(cells):
 
 class TicTacToe(BoardWidget):
     SIZE = 3
+    GAME = "tictactoe"
+    SIDE_NAMES = ("krzyżyk", "kółko")
 
     def __init__(self, **kwargs):
         self.cells = [None] * 9
@@ -45,30 +49,49 @@ class TicTacToe(BoardWidget):
         self.player = 0
         self.win_line = None
         self.finished = False
-        self.status = f"Ruch: {NAMES[0]}"
+        self.refresh_status()
         self.redraw()
+
+    def current_side(self):
+        return self.player
+
+    def refresh_status(self):
+        if not self.finished:
+            self.status = self.turn_text(self.player)
 
     def tap(self, row, col):
         i = row * 3 + col
         if self.finished or self.cells[i] is not None:
             return
+        self.send([i])
+        self._place(i)
+
+    def remote_move(self, move):
+        if not self.finished and not self.human_turn() and self.cells[move[0]] is None:
+            self._place(move[0])
+
+    def _place(self, i):
         self.cells[i] = self.player
         mark, line = winner(self.cells)
         if mark is not None:
             self.win_line = line
-            self.status = f"Wygrywa {NAMES[mark].split(' (')[0]}!"
+            self.status = self.winner_text(mark)
             self._finish()
         elif all(c is not None for c in self.cells):
             self.status = "Remis!"
             self._finish()
         else:
             self.player = 1 - self.player
-            self.status = f"Ruch: {NAMES[self.player]}"
+            self.refresh_status()
         self.redraw()
 
     def _finish(self):
         self.finished = True
+        # nowa partia sama, także w grze sieciowej (obie strony liczą ten sam czas)
         self._restart = Clock.schedule_once(self.new_game, RESTART_SECONDS)
+
+    def computer_turn(self):
+        return False                    # w kółko i krzyżyk bez gry z komputerem
 
     def redraw(self):
         c = self.cell

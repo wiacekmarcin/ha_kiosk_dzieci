@@ -34,6 +34,8 @@ else:
     Config.set("graphics", "width", "1280")
     Config.set("graphics", "height", "800")
     Config.set("input", "mouse", "mouse,disable_multitouch")
+# przycisk Wstecz cofa w aplikacji (GamesHost), nigdy jej nie zamyka
+Config.set("kivy", "exit_on_escape", "0")
 
 from kivy.app import App  # noqa: E402
 from kivy.clock import Clock  # noqa: E402
@@ -43,7 +45,8 @@ from kivy.properties import StringProperty  # noqa: E402
 
 from dzieci import clocks  # noqa: E402 - klasy zegarów dla ekran.kv
 from dzieci.announce import DayAnnouncer  # noqa: E402
-from dzieci.games import chess, checkers, dice, paint, tictactoe  # noqa: E402,F401 - klasy gier dla ekran.kv
+from dzieci.games import chess, checkers, dice, paint, tictactoe  # noqa: E402,F401 - klasy gier dla gry.kv
+from dzieci.games.host import GamesHost  # noqa: E402
 from kivy.uix.screenmanager import NoTransition  # noqa: E402
 from kiosk import icons, voice  # noqa: E402
 from kiosk.widgets.voice_dialog import VoiceDialog  # noqa: E402
@@ -66,7 +69,7 @@ def load_settings() -> dict:
     return {}
 
 
-class DzieciApp(App):
+class DzieciApp(GamesHost, App):
     title = "HA Kiosk dzieci"
     section = StringProperty("home")     # podświetlenie w menu (widgets.kv z kiosku)
     time_text = StringProperty("")
@@ -90,8 +93,13 @@ class DzieciApp(App):
             self.voice = voice.VoiceLink(settings, self.tablet_name, voice.cache_dir(),
                                          self._on_message)
             self.voice.start()
+            # gra przez sieć z innymi tabletami (przez HA)
+            self.setup_games(settings, self.tablet_name)
+        else:
+            self.setup_games({}, self.tablet_name)
         self._update_clock(0)
         Clock.schedule_interval(self._update_clock, 1)
+        Builder.load_file(str(HERE / "dzieci" / "games" / "gry.kv"))
         # ekran.kv celowo nie nazywa się dzieci.kv - Kivy wczytałby go sam przed build()
         return Builder.load_file(str(HERE / "ekran.kv"))
 
@@ -122,6 +130,7 @@ class DzieciApp(App):
         sm = self.root.ids.sm
         screen = "start" if target == "home" else target
         if sm.has_screen(screen):
+            self.leave_network_games(keep=screen)   # wyjście z gry sieciowej kończy partię
             sm.transition = NoTransition()
             sm.current = screen
             self.section = "home" if screen == "start" else "games"

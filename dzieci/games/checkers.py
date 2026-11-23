@@ -11,6 +11,7 @@ Uproszczenie dla dzieci: nie trzeba wybierać bicia z największą liczbą zbity
 
 Gra z komputerem (1 gracz): dziecko gra białymi, komputer czarnymi na poziomie łatwym -
 wybiera losowy dozwolony ruch, chętniej taki, po którym jego pionek zostaje damką.
+Gra przez sieć: ruch wysyłany jako lista pól drogi pionka [r0, c0, r1, c1, ...].
 """
 import random
 
@@ -20,8 +21,6 @@ from dzieci.games.board import BoardWidget
 
 N = 8
 DIRS = [(-1, -1), (-1, 1), (1, -1), (1, 1)]
-NAMES = ["Gracz 1 (białe)", "Gracz 2 (czarne)"]
-COMPUTER = 1                    # w grze z komputerem komputer gra czarnymi
 LIGHT = (0.93, 0.85, 0.70, 1)
 DARK = (0.55, 0.38, 0.24, 1)
 PIECE = [(0.97, 0.96, 0.92, 1), (0.16, 0.16, 0.18, 1)]
@@ -134,6 +133,7 @@ def apply(board, move):
 # --- plansza na ekranie -----------------------------------------------------------------------
 class Checkers(BoardWidget):
     SIZE = N
+    GAME = "checkers"
 
     def __init__(self, **kwargs):
         self.board = initial()
@@ -152,29 +152,32 @@ class Checkers(BoardWidget):
         self.finished = False
         self._start_turn()
 
-    def _name(self, player):
-        if self.players == 1:
-            return "Twój ruch (białe)" if player != COMPUTER else "Ruch komputera (czarne)"
-        return f"Ruch: {NAMES[player]}"
+    def current_side(self):
+        return self.player
+
+    def refresh_status(self):
+        if self.finished:
+            return
+        must = " - bicie obowiązkowe" if self.moves and self.moves[0]["captured"] else ""
+        if self.step:
+            must = " - bij dalej"
+        self.status = self.turn_text(self.player) + must
 
     def _start_turn(self):
         self.selected, self.candidates, self.step = None, [], 0
         self.moves = legal_moves(self.board, self.player)
         if not self.moves:
             self.finished = True
-            winner = 1 - self.player
-            if self.players == 1:
-                self.status = "Wygrywa komputer!" if winner == COMPUTER else "Wygrywasz! Brawo!"
-            else:
-                self.status = f"Wygrywa {NAMES[winner]}!"
+            self.status = self.winner_text(1 - self.player)
         else:
-            must = " - bicie obowiązkowe" if self.moves[0]["captured"] else ""
-            self.status = self._name(self.player) + must
+            self.refresh_status()
         self.redraw()
         self.schedule_ai()
 
-    def computer_turn(self):
-        return self.player == COMPUTER
+    def _play(self, move):
+        self.board = apply(self.board, move)
+        self.player = 1 - self.player
+        self._start_turn()
 
     def ai_move(self):
         """Poziom łatwy: losowy dozwolony ruch, chętniej z promocją na damkę."""
@@ -183,10 +186,17 @@ class Checkers(BoardWidget):
         last_row = N - 1 if self.player == 1 else 0
         promote = [m for m in self.moves if m["path"][-1][0] == last_row
                    and not self.board[m["path"][0][0]][m["path"][0][1]][1]]
-        move = random.choice(promote if promote and random.random() < 0.7 else self.moves)
-        self.board = apply(self.board, move)
-        self.player = 1 - self.player
-        self._start_turn()
+        self._play(random.choice(promote if promote and random.random() < 0.7 else self.moves))
+
+    def remote_move(self, move):
+        """Ruch drugiego tabletu: lista pól [r0, c0, r1, c1, ...]."""
+        if self.finished or self.human_turn():
+            return
+        path = [tuple(move[i:i + 2]) for i in range(0, len(move), 2)]
+        for m in self.moves:
+            if m["path"] == path:
+                self._play(m)
+                return
 
     def tap(self, row, col):
         if self.finished:
@@ -206,11 +216,10 @@ class Checkers(BoardWidget):
         self.candidates = nxt
         done = [m for m in nxt if len(m["path"]) == self.step + 1]
         if done:
-            self.board = apply(self.board, done[0])
-            self.player = 1 - self.player
-            self._start_turn()
+            self.send([v for square in done[0]["path"] for v in square])
+            self._play(done[0])
         else:
-            self.status = self._name(self.player) + " - bij dalej"
+            self.refresh_status()
             self.redraw()
 
     def _current_square(self):

@@ -8,6 +8,7 @@ Figury rysowane znakami Unicode z czcionki DejaVu Sans (assets/fonts_dzieci).
 
 Gra z komputerem (1 gracz): dziecko gra białymi, komputer czarnymi na poziomie łatwym -
 zwykle zbija najcenniejszą figurę, jaką może, a poza tym gra losowo (nie liczy wariantów).
+Gra przez sieć: ruch wysyłany jako [r0, c0, r1, c1].
 """
 import random
 from pathlib import Path
@@ -20,8 +21,6 @@ from dzieci.games.board import BoardWidget
 N = 8
 FONT = str(Path(__file__).resolve().parents[2] / "assets" / "fonts_dzieci" / "DejaVuSans.ttf")
 GLYPH = {"K": "♚", "Q": "♛", "R": "♜", "B": "♝", "N": "♞", "P": "♟"}
-NAMES = {"w": "Gracz 1 (białe)", "b": "Gracz 2 (czarne)"}
-COMPUTER = "b"                  # w grze z komputerem komputer gra czarnymi
 VALUE = {"P": 1, "N": 3, "B": 3, "R": 5, "Q": 9, "K": 0}
 CAPTURE_CHANCE = 0.7            # poziom łatwy: nie zawsze zauważa bicie
 LIGHT = (0.93, 0.85, 0.70, 1)
@@ -183,6 +182,7 @@ def legal_moves(state):
 # --- plansza na ekranie -----------------------------------------------------------------------
 class Chess(BoardWidget):
     SIZE = N
+    GAME = "chess"
 
     def __init__(self, **kwargs):
         self.state = initial()
@@ -200,32 +200,33 @@ class Chess(BoardWidget):
         self.finished = False
         self._start_turn()
 
-    def _name(self, color):
-        if self.players == 1:
-            return "Twój ruch (białe)" if color != COMPUTER else "Ruch komputera (czarne)"
-        return f"Ruch: {NAMES[color]}"
+    def current_side(self):
+        return 0 if self.state["turn"] == "w" else 1
+
+    def refresh_status(self):
+        if self.finished:
+            return
+        check = in_check(self.state, self.state["turn"])
+        self.status = self.turn_text(self.current_side()) + (" - szach!" if check else "")
 
     def _start_turn(self):
         self.selected = None
         self.moves = legal_moves(self.state)
-        color = self.state["turn"]
-        check = in_check(self.state, color)
         if not self.moves:
             self.finished = True
-            if not check:
-                self.status = "Pat - remis"
-            elif self.players == 1:
-                self.status = ("Szach mat! Wygrywa komputer" if other(color) == COMPUTER
-                               else "Szach mat! Wygrywasz! Brawo!")
+            if in_check(self.state, self.state["turn"]):
+                self.status = "Szach mat! " + self.winner_text(1 - self.current_side())
             else:
-                self.status = f"Szach mat! Wygrywa {NAMES[other(color)]}"
+                self.status = "Pat - remis"
         else:
-            self.status = self._name(color) + (" - szach!" if check else "")
+            self.refresh_status()
         self.redraw()
         self.schedule_ai()
 
-    def computer_turn(self):
-        return self.state["turn"] == COMPUTER
+    def _play(self, move):
+        self.state = make_move(self.state, move)
+        self.last = ((move[0], move[1]), (move[2], move[3]))
+        self._start_turn()
 
     def ai_move(self):
         """Poziom łatwy: zwykle bije najcenniejszą figurę, a poza tym ruch losowy."""
@@ -239,9 +240,16 @@ class Chess(BoardWidget):
                                   if (VALUE[board[m[2]][m[3]][1]] if board[m[2]][m[3]] else 1) == best])
         else:
             move = random.choice(self.moves)
-        self.state = make_move(self.state, move)
-        self.last = ((move[0], move[1]), (move[2], move[3]))
-        self._start_turn()
+        self._play(move)
+
+    def remote_move(self, move):
+        """Ruch drugiego tabletu: [r0, c0, r1, c1]."""
+        if self.finished or self.human_turn():
+            return
+        for m in self.moves:
+            if list(m[:4]) == list(move[:4]):
+                self._play(m)
+                return
 
     def tap(self, row, col):
         if self.finished:
@@ -249,16 +257,14 @@ class Chess(BoardWidget):
         if self.selected is not None:
             for m in self.moves:
                 if (m[0], m[1]) == self.selected and (m[2], m[3]) == (row, col):
-                    self.state = make_move(self.state, m)
-                    self.last = ((m[0], m[1]), (m[2], m[3]))
-                    self._start_turn()
+                    self.send(m[:4])
+                    self._play(m)
                     return
         if any((m[0], m[1]) == (row, col) for m in self.moves):
             self.selected = (row, col)
         else:
             self.selected = None
         self.redraw()
-
     def redraw(self):
         c = self.cell
         board = self.state["board"]
@@ -303,3 +309,5 @@ class Chess(BoardWidget):
                 for m in self.moves:
                     if (m[0], m[1]) == self.selected:
                         cx, cy = self.cell_center(m[2], m[3])
+                        # zielona kropka: pole, na które może pójść wybrana figura
+                        Ellipse(pos=(cx - c * 0.14, cy - c * 0.14), size=(c * 0.28, c * 0.28))

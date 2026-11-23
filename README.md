@@ -59,6 +59,12 @@ Przycisk z padem w menu po prawej otwiera siatkę gier; w każdej grze u góry j
 - **Kółko i krzyżyk** - dwóch graczy na zmianę: Gracz 1 stawia krzyżyki, Gracz 2 kółka;
   trzy w wierszu, kolumnie albo po skosie wygrywają, pełna plansza to remis. Nowa gra
   zaczyna się sama po 3 s.
+- **Gra przez sieć** (kółko i krzyżyk, warcaby, szachy) - przycisk z ikoną sieci wysyła
+  zaproszenie do pozostałych tabletów z grami (Kiosk dzieci, HA Intercom na Tablecie 2);
+  na nich pojawia się okno „… zaprasza do gry” z przyciskami Graj i Nie. Zapraszający
+  gra białymi / krzyżykiem, każdy tablet stuka tylko w swojej kolejce. Komunikaty idą
+  przez Home Assistant (encja `sensor.kiosk_gra`, `dzieci/games/net.py`), jak domofon.
+  Wyjście z gry albo „Nowa gra” kończy partię u obu graczy.
 - **Warcaby** (8x8) i **Szachy** - przyciski z jedną głową (1 gracz, gra z komputerem
   na poziomie łatwym; dziecko gra białymi) albo dwiema głowami (2 graczy na zmianę, na dole
   napis, czyja kolej). Stuknięcie pionka lub figury pokazuje zielone kropki na
