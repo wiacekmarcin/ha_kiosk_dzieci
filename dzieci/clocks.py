@@ -34,6 +34,8 @@ DAY_COLORS = {
     "ubieranie": (1.0, 0.93, 0.68, 1),
     "przedszkole": (0.78, 0.92, 0.74, 1),
     "czas_wolny": (1.0, 0.82, 0.64, 1),
+    "zabawa": (0.78, 0.92, 0.74, 1),
+    "obiad": (1.0, 0.88, 0.62, 1),
     "kolacja": (0.92, 0.82, 0.96, 1),
     "kapiel": (0.80, 0.93, 0.98, 1),
     "pidzama": (0.86, 0.82, 0.97, 1),
@@ -155,57 +157,66 @@ class AnalogClock(ClockBase):
 
 # --- zegar pór dnia ---------------------------------------------------------------------
 class DayClock(ClockBase):
+    """Plan dnia: w tygodniu z przedszkolem, w weekend własny - tarcza przebudowuje się
+    sama przy zmianie planu (o północy z piątku na sobotę i z niedzieli na poniedziałek)."""
     TICK = 5.0
 
     def __init__(self, **kwargs):
         self._images = []
         self._current = None
+        self._plan = plan.day_plan(self.now())
         super().__init__(**kwargs)
 
     def redraw(self):
         cx, cy, r = self.center_x, self.center_y, self.radius
-        step = plan.SECTOR
+        acts = self._plan
+        step = plan.sector(acts)
         self.canvas.before.clear()
         with self.canvas.before:
             Color(*RIM)
             Ellipse(pos=(cx - r, cy - r), size=(2 * r, 2 * r))
             rf = r * 0.94
-            for i, act in enumerate(plan.DAY_PLAN):
+            for i, act in enumerate(acts):
                 Color(*DAY_COLORS[act.key])
-                a = plan.sector_center(i)
+                a = plan.sector_center(i, acts)
                 Ellipse(pos=(cx - rf, cy - rf), size=(2 * rf, 2 * rf),
                         angle_start=a - step / 2, angle_end=a + step / 2)
             Color(1, 1, 1, 0.9)
-            for i in range(len(plan.DAY_PLAN)):
-                x, y = polar(cx, cy, rf, plan.sector_center(i) - step / 2)
+            for i in range(len(acts)):
+                x, y = polar(cx, cy, rf, plan.sector_center(i, acts) - step / 2)
                 Line(points=[cx, cy, x, y], width=max(1, r * 0.008))
         for img in self._images:
             self.remove_widget(img)
         self._images = []
-        size = r * 0.30
-        for i, act in enumerate(plan.DAY_PLAN):
-            x, y = polar(cx, cy, r * 0.72, plan.sector_center(i))
-            img = Image(source=str(ICONS / f"{act.key}.png"), size=(size, size),
-                        center=(x, y), fit_mode="contain")
+        for act in acts:
+            img = Image(source=str(ICONS / f"{act.key}.png"), fit_mode="contain")
             self.add_widget(img)
             self._images.append(img)
         self._current = None
 
+    def _icon_size(self):
+        # 11-12 obrazków na obwodzie: mniejsze, gdy wycinków jest więcej
+        return self.radius * min(0.30, 3.3 / len(self._plan))
+
     def _tick(self, _dt):
         now = self.now()
+        acts = plan.day_plan(now)
+        if acts is not self._plan:
+            self._plan = acts
+            self.redraw()
         i, _frac = plan.current_activity(now)
         cx, cy, r = self.center_x, self.center_y, self.radius
         if i != self._current and self._images:
             self._current = i
-            size = r * 0.30
+            size = self._icon_size()
             for k, img in enumerate(self._images):
                 big = size * (1.25 if k == i else 1.0)
                 img.size = (big, big)
-                img.center = polar(cx, cy, r * 0.72, plan.sector_center(k))
+                img.center = polar(cx, cy, r * 0.72, plan.sector_center(k, acts))
                 img.opacity = 1.0 if k == i else 0.7
-        self.caption = plan.DAY_PLAN[i].label
-        step = plan.SECTOR
-        a = plan.sector_center(i)
+        self.caption = acts[i].label
+        step = plan.sector(acts)
+        a = plan.sector_center(i, acts)
         self.canvas.after.clear()
         self.canvas.after.add(Color(*HIGHLIGHT))
         self.canvas.after.add(Line(circle=(cx, cy, r * 0.97, a - step / 2, a + step / 2),

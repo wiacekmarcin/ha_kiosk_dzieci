@@ -11,19 +11,20 @@ Trzy zegary:
   Każda czynność ma na tarczy równy wycinek (sen u góry), wskazówka przesuwa się w nim
   w miarę upływu czasu. Plan w `dzieci/plan.py`:
 
-  | Czynność | Godziny |
-  |---|---|
-  | Sen | 20:00-7:00 |
-  | Mycie | 7:00-7:15 |
-  | Śniadanie | 7:15-7:30 |
-  | Mycie zębów | 7:30-7:45 |
-  | Ubieranie się | 7:45-8:00 |
-  | Zabawa w przedszkolu | 8:00-17:00 |
-  | Czas wolny | 17:00-19:00 |
-  | Kolacja | 19:00-19:15 |
-  | Mycie | 19:15-19:30 |
-  | Mycie zębów | 19:30-19:45 |
-  | Ubieranie piżamki | 19:45-20:00 |
+  | Czynność | Poniedziałek-piątek | Sobota i niedziela |
+  |---|---|---|
+  | Sen | 20:00-7:00 | 20:00-7:00 |
+  | Mycie | 7:00-7:15 | 7:00-7:15 |
+  | Śniadanie | 7:15-7:30 | 7:15-7:30 |
+  | Mycie zębów | 7:30-7:45 | 7:30-7:45 |
+  | Ubieranie się | 7:45-8:00 | 7:45-8:00 |
+  | Zabawa w przedszkolu / Zabawa | 8:00-17:00 | 8:00-15:00 |
+  | Obiad | - | 15:00-16:00 |
+  | Czas wolny / Plac zabaw | 17:00-19:00 | 16:00-19:00 |
+  | Kolacja | 19:00-19:15 | 19:00-19:15 |
+  | Mycie | 19:15-19:30 | 19:15-19:30 |
+  | Mycie zębów | 19:30-19:45 | 19:30-19:45 |
+  | Ubieranie piżamki | 19:45-20:00 | 19:45-20:00 |
 
 - **Analogowy** (środkowy) - wskazówki godzin, minut i sekund, pod spodem dzień tygodnia.
 - **Pory roku** (prawy) - cztery ćwiartki z animowanymi ikonami (zima - wirujący płatek,
