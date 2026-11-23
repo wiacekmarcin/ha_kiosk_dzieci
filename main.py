@@ -41,7 +41,8 @@ from kivy.core.window import Window  # noqa: E402
 from kivy.lang import Builder  # noqa: E402
 from kivy.properties import StringProperty  # noqa: E402
 
-from dzieci import clocks  # noqa: E402,F401 - klasy zegarów dla dzieci.kv
+from dzieci import clocks  # noqa: E402 - klasy zegarów dla ekran.kv
+from dzieci.announce import DayAnnouncer  # noqa: E402
 from kiosk import icons, voice  # noqa: E402
 from kiosk.widgets.voice_dialog import VoiceDialog  # noqa: E402
 
@@ -79,6 +80,8 @@ class DzieciApp(App):
         self.voice = None
         self.voice_recorder = voice.Recorder()
         self.voice_player = voice.Player()
+        # komunikat głosowy przy zmianie pory dnia ("Czas na śniadanie")
+        self.announcer = DayAnnouncer(self.voice_player)
         settings = load_settings()
         if settings.get("url") and settings.get("token") and not os.environ.get("DZIECI_SCREENSHOT"):
             self.tablet_name = settings.get("tablet_name", self.tablet_name)

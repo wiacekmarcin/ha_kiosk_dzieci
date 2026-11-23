@@ -26,6 +26,10 @@ Trzy zegary:
   | Mycie zębów | 19:30-19:45 | 19:30-19:45 |
   | Ubieranie piżamki | 19:45-20:00 | 19:45-20:00 |
 
+  Przy zmianie czynności tablet mówi, co teraz (gong i np. „Czas na śniadanie”);
+  dotknięcie tarczy powtarza komunikat. Nagrania w `assets/komunikaty` robi
+  `tools/make_sounds.py` (edge-tts, głos pl-PL-ZofiaNeural).
+
 - **Analogowy** (środkowy) - wskazówki godzin, minut i sekund, pod spodem dzień tygodnia.
 - **Pory roku** (prawy) - cztery ćwiartki z animowanymi ikonami (zima - wirujący płatek,
   wiosna - kołyszący się tulipan, lato - pulsujące słońce, jesień - opadające liście),

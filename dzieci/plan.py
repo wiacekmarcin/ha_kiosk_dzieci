@@ -12,6 +12,11 @@ class Activity:
     label: str
     start: int      # minuta doby
     end: int        # minuta doby (koniec wyłączny; sen przechodzi przez północ)
+    sound: str = ""  # komunikat assets/komunikaty/<sound>.ogg (pusty = jak key)
+
+    @property
+    def sound_name(self) -> str:
+        return self.sound or self.key
 
 
 def _m(hhmm: str) -> int:
@@ -40,7 +45,7 @@ WEEKDAY_PLAN = _MORNING + [
 WEEKEND_PLAN = _MORNING + [
     Activity("zabawa", "Zabawa", _m("08:00"), _m("15:00")),
     Activity("obiad", "Obiad", _m("15:00"), _m("16:00")),
-    Activity("czas_wolny", "Plac zabaw", _m("16:00"), _m("19:00")),
+    Activity("czas_wolny", "Plac zabaw", _m("16:00"), _m("19:00"), "plac_zabaw"),
 ] + _EVENING
 
 
