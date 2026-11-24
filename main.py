@@ -34,7 +34,8 @@ else:
     Config.set("graphics", "width", "1280")
     Config.set("graphics", "height", "800")
     Config.set("input", "mouse", "mouse,disable_multitouch")
-# przycisk Wstecz cofa w aplikacji (GamesHost), nigdy jej nie zamyka
+# Esc nie zamyka aplikacji na PC; przyciski tabletu obsługuje GamesHost (systemowo tylko na
+# ekranie startowym)
 Config.set("kivy", "exit_on_escape", "0")
 
 from kivy.app import App  # noqa: E402
@@ -45,8 +46,9 @@ from kivy.properties import StringProperty  # noqa: E402
 
 from dzieci import clocks  # noqa: E402 - klasy zegarów dla ekran.kv
 from dzieci.announce import DayAnnouncer  # noqa: E402
-from dzieci.games import chess, checkers, dice, paint, tictactoe  # noqa: E402,F401 - klasy gier dla gry.kv
+from dzieci.games import chess, checkers, dice, dots, football, paint, pdots, ships, snake, tetris, tictactoe  # noqa: E402,F401 - klasy gier dla gry.kv
 from dzieci.games.host import GamesHost  # noqa: E402
+from dzieci.music import MusicPlayer  # noqa: E402
 from kivy.uix.screenmanager import NoTransition  # noqa: E402
 from kiosk import icons, voice  # noqa: E402
 from kiosk.widgets.voice_dialog import VoiceDialog  # noqa: E402
@@ -87,6 +89,7 @@ class DzieciApp(GamesHost, App):
         self.voice_player = voice.Player()
         # komunikat głosowy przy zmianie pory dnia ("Czas na śniadanie")
         self.announcer = DayAnnouncer(self.voice_player)
+        self.music = MusicPlayer(self.voice_player)    # ekran Muzyka
         settings = load_settings()
         if settings.get("url") and settings.get("token") and not os.environ.get("DZIECI_SCREENSHOT"):
             self.tablet_name = settings.get("tablet_name", self.tablet_name)
@@ -100,6 +103,7 @@ class DzieciApp(GamesHost, App):
         self._update_clock(0)
         Clock.schedule_interval(self._update_clock, 1)
         Builder.load_file(str(HERE / "dzieci" / "games" / "gry.kv"))
+        Builder.load_file(str(HERE / "dzieci" / "music" / "muzyka.kv"))
         # ekran.kv celowo nie nazywa się dzieci.kv - Kivy wczytałby go sam przed build()
         return Builder.load_file(str(HERE / "ekran.kv"))
 

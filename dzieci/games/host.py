@@ -2,12 +2,15 @@
 
 GamesHost to mieszanka dla klasy App: łączy gry z siecią (GameNet przez Home Assistant),
 pokazuje okno zaproszenia od innego tabletu, przekazuje ruchy do planszy i obsługuje
-przycisk Wstecz (cofa w aplikacji: gra -> siatka gier -> ekran startowy, nigdy jej
-nie zamyka). Aplikacja musi mieć metodę nav(cel) i ScreenManager w self.root.ids.sm.
+przyciski tabletu (Wstecz, Menu): systemowo tylko na ekranie startowym, w grach nic nie
+robią. Aplikacja musi mieć metodę nav(cel) i ScreenManager w self.root.ids.sm.
 """
+from kivy.app import App
 from kivy.clock import Clock
 from kivy.core.window import Window
+from kivy.factory import Factory
 from kivy.graphics import Color, RoundedRectangle
+from kivy.properties import StringProperty
 from kivy.uix.boxlayout import BoxLayout
 from kivy.uix.button import Button
 from kivy.uix.label import Label
@@ -16,9 +19,43 @@ from kivy.uix.modalview import ModalView
 from dzieci.games.board import GAMES, NETWORK
 from dzieci.games.net import GameNet
 
-GAME_SCREENS = ("tictactoe", "checkers", "chess", "paint", "dice")
-TITLES = {"tictactoe": "kółko i krzyżyk", "checkers": "warcaby", "chess": "szachy"}
+# kolejność gier jak w siatce gier - dla przycisków Poprzednia / Następna
+GAME_SCREENS = ("tictactoe", "checkers", "chess", "paint", "dice", "dots", "ships", "pdots",
+                "tetris", "snake", "football")
+TITLES = {"tictactoe": "kółko i krzyżyk", "checkers": "warcaby", "chess": "szachy",
+          "dots": "kropki", "ships": "statki", "pdots": "polskie kropki",
+          "football": "piłkarzyki"}
+# Material Design Icons: chevron-left, chevron-right
+PREV_GLYPH, NEXT_GLYPH = 0xF0141, 0xF0142
+
+
+class GameBar(BoxLayout):
+    """Belka u góry gry (wygląd w gry.kv): Wstecz, tytuł, przyciski gry, a na drugim końcu
+    Poprzednia i Następna gra - dokładane po przyciskach z ekranu gry."""
+    title = StringProperty("")
+
+    def __init__(self, **kwargs):
+        super().__init__(**kwargs)
+        Clock.schedule_once(self._add_nav)
+
+    def _add_nav(self, _dt):
+        for code, step in ((PREV_GLYPH, -1), (NEXT_GLYPH, 1)):
+            button = Factory.NavButton(code=code)
+            button.bind(on_release=lambda _b, s=step: self.go(s))
+            self.add_widget(button)
+
+    @staticmethod
+    def go(step: int):
+        app = App.get_running_app()
+        current = app.root.ids.sm.current
+        if current in GAME_SCREENS:
+            i = GAME_SCREENS.index(current)
+            app.nav(GAME_SCREENS[(i + step) % len(GAME_SCREENS)])
+
+
 INVITE_SECONDS = 60     # tyle czeka okno zaproszenia
+# przyciski tabletu: 27 - Wstecz (Esc na PC), 319 i 1073741942 - Menu (Kivy / SDL)
+HARDWARE_KEYS = {27, 319, 1073741942}
 
 
 class InvitePopup(ModalView):
@@ -69,19 +106,20 @@ class GamesHost:
     def leave_network_games(self, keep=None):
         """Wyjście z ekranu gry sieciowej kończy partię (drugi tablet dostaje komunikat)."""
         for key, board in GAMES.items():
-            if key != keep and board.players == NETWORK:
+            active = board.net_ready or getattr(self.net, "game", None) == key
+            if key != keep and board.players == NETWORK and active:
                 board.leave_network()
                 board.status = "Gra przez sieć zakończona"
 
     def _games_key(self, _window, key, *_args):
-        if key != 27:                   # 27 - Wstecz na Androidzie, Esc na PC
+        """Przyciski tabletu (Wstecz, Menu): na ekranie startowym działają systemowo
+        (Kivy przenosi aplikację w tło jak każdą inną), w grach i oknach nic nie robią -
+        do cofania jest przycisk Wstecz u góry ekranu."""
+        if key not in HARDWARE_KEYS:
             return False
-        current = self.root.ids.sm.current
-        if current in GAME_SCREENS:
-            self.nav("games")
-        elif current != "start":
-            self.nav("home")
-        return True                     # nigdy nie zamykaj aplikacji
+        on_main = self.root.ids.sm.current == "start" and not any(
+            isinstance(w, ModalView) for w in Window.children)
+        return not on_main
 
     # --- komunikaty z sieci -------------------------------------------------------------------
     def on_game_event(self, msg: dict):

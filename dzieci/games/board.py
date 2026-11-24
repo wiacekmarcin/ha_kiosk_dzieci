@@ -161,7 +161,7 @@ class BoardWidget(Widget):
 
     def leave_network(self):
         net = self.net()
-        if net is not None and net.session:
+        if net is not None and net.session and getattr(net, "game", self.GAME) == self.GAME:
             net.leave(self.GAME)
         self.net_ready, self.peer = False, ""
 

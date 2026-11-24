@@ -34,11 +34,14 @@
         fit_mode: "contain"
     Label:
         text: root.title
-        font_size: "30sp"
+        font_size: "23sp"
         bold: True
         color: GRY_TEXT
+        halign: "center"
+        valign: "middle"
+        text_size: self.width, None
         size_hint_y: None
-        height: 60
+        height: 64
 
 # Przycisk z napisem w pasku gry (Nowa gra, Wyczyść, Rzuć)
 <BarButton@ButtonBehavior+Label>:
@@ -55,9 +58,29 @@
             size: self.size
             radius: [32]
 
-# Pasek u góry każdej gry: Wstecz (do siatki gier), tytuł, miejsce na przyciski
-<GameBar@BoxLayout>:
-    title: ""
+# Przycisk Poprzednia / Następna (gra albo piosenka): strzałka z czcionki ikon
+<NavButton@ButtonBehavior+AnchorLayout>:
+    code: 0
+    size_hint: None, None
+    size: 76, 64
+    canvas.before:
+        Color:
+            rgba: GRY_TILE_DOWN if self.state == "down" else GRY_TILE
+        RoundedRectangle:
+            pos: self.pos
+            size: self.size
+            radius: [32]
+    Label:
+        text: chr(root.code) if root.code else ""
+        font_name: icons.FONT_NAME
+        font_size: "46sp"
+        color: GRY_WARM
+        size_hint: None, None
+        size: self.texture_size
+
+# Pasek u góry każdej gry: Wstecz (do siatki gier), tytuł, przyciski gry, a na drugim końcu
+# Poprzednia i Następna gra (klasa GameBar w dzieci/games/host.py dokłada je na końcu)
+<GameBar>:
     size_hint_y: None
     height: 84
     padding: [16, 10]
@@ -69,6 +92,10 @@
         font_size: "32sp"
         bold: True
         color: GRY_WARM
+        halign: "center"
+        valign: "middle"
+        text_size: self.size
+        shorten: True
 
 # Wybór trybu: 1 gracz (z komputerem), 2 graczy (jeden tablet), sieć (inny tablet)
 <ModeButton@ButtonBehavior+AnchorLayout>:
@@ -150,9 +177,9 @@
                 bold: True
                 color: GRY_WARM
         GridLayout:
-            cols: 3
-            padding: [40, 20, 40, 40]
-            spacing: 30
+            cols: 6
+            padding: [30, 16, 30, 30]
+            spacing: 22
             GameTile:
                 image: "gra_kolko.png"
                 title: "Kółko i krzyżyk"
@@ -173,7 +200,30 @@
                 image: "gra_kostka.png"
                 title: "Rzut kostką"
                 target: "dice"
-            Widget:
+            GameTile:
+                image: "gra_kropki.png"
+                title: "Kropki"
+                target: "dots"
+            GameTile:
+                image: "gra_statki.png"
+                title: "Statki (sieć)"
+                target: "ships"
+            GameTile:
+                image: "gra_pkropki.png"
+                title: "Polskie kropki"
+                target: "pdots"
+            GameTile:
+                image: "gra_tetris.png"
+                title: "Tetris"
+                target: "tetris"
+            GameTile:
+                image: "gra_waz.png"
+                title: "Wąż"
+                target: "snake"
+            GameTile:
+                image: "gra_pilkarzyki.png"
+                title: "Piłkarzyki"
+                target: "football"
 
 <TicTacToeScreen@Screen>:
     name: "tictactoe"
@@ -338,3 +388,220 @@
                         pos: self.pos
                         size: self.size
                         radius: [32]
+
+<DotsScreen@Screen>:
+    name: "dots"
+    BoxLayout:
+        orientation: "vertical"
+        GameBar:
+            title: "Kropki"
+            ModeButton:
+                game: dots
+                players: 1
+                active: dots.players == 1
+            ModeButton:
+                game: dots
+                players: 2
+                active: dots.players == 2
+            ModeButton:
+                game: dots
+                players: 0
+                active: dots.players == 0
+            BarButton:
+                text: "Nowa gra"
+                on_release: dots.restart()
+        Dots:
+            id: dots
+        GameStatus:
+            text: dots.status
+
+# Statki - tylko przez sieć: wejście na ekran wysyła zaproszenie
+<ShipsScreen@Screen>:
+    name: "ships"
+    on_enter: ships.enter_later()
+    BoxLayout:
+        orientation: "vertical"
+        GameBar:
+            title: "Statki"
+            BarButton:
+                text: "Losuj flotę"
+                disabled: ships.started
+                opacity: 0.4 if ships.started else 1
+                on_release: ships.shuffle()
+            BarButton:
+                text: "Nowa gra"
+                on_release: ships.restart()
+        Battleship:
+            id: ships
+        GameStatus:
+            text: ships.status
+
+# Okrągły przycisk sterowania w grach zręcznościowych (znak z czcionki ikon MDI)
+<PadButton@ButtonBehavior+AnchorLayout>:
+    code: 0
+    size_hint: None, None
+    size: 118, 118
+    canvas.before:
+        Color:
+            rgba: GRY_TILE_DOWN if self.state == "down" else GRY_TILE
+        Ellipse:
+            pos: self.pos
+            size: self.size
+    Label:
+        text: chr(root.code) if root.code else ""
+        font_name: icons.FONT_NAME
+        font_size: "64sp"
+        color: GRY_WARM
+        size_hint: None, None
+        size: self.texture_size
+
+<PadGap@Widget>:
+    size_hint: None, None
+    size: 118, 118
+
+<PolishDotsScreen@Screen>:
+    name: "pdots"
+    BoxLayout:
+        orientation: "vertical"
+        GameBar:
+            title: "Polskie kropki"
+            ModeButton:
+                game: pdots
+                players: 1
+                active: pdots.players == 1
+            ModeButton:
+                game: pdots
+                players: 2
+                active: pdots.players == 2
+            ModeButton:
+                game: pdots
+                players: 0
+                active: pdots.players == 0
+            BarButton:
+                text: "Zakończ"
+                size: 150, 64
+                on_release: pdots.finish_button()
+            BarButton:
+                text: "Nowa gra"
+                size: 150, 64
+                on_release: pdots.restart()
+        PolishDots:
+            id: pdots
+        GameStatus:
+            text: pdots.status
+
+# Material Design Icons: rotate-right, arrow-collapse-down, chevron-left/right/up/down
+<TetrisScreen@Screen>:
+    name: "tetris"
+    on_leave: tetris.pause()
+    BoxLayout:
+        orientation: "vertical"
+        GameBar:
+            title: "Tetris"
+            BarButton:
+                text: "Graj" if (tetris.paused or tetris.over) else "Pauza"
+                on_release: tetris.toggle_pause()
+            BarButton:
+                text: "Nowa gra"
+                on_release: tetris.new_game()
+        BoxLayout:
+            Tetris:
+                id: tetris
+            AnchorLayout:
+                size_hint_x: None
+                width: 320
+                GridLayout:
+                    cols: 2
+                    spacing: 24
+                    size_hint: None, None
+                    size: 260, 400
+                    PadButton:
+                        code: 0xF0467
+                        on_press: tetris.action("rotate")
+                    PadButton:
+                        code: 0xF0792
+                        on_press: tetris.action("drop")
+                    PadButton:
+                        code: 0xF0141
+                        on_press: tetris.action("left")
+                    PadButton:
+                        code: 0xF0142
+                        on_press: tetris.action("right")
+                    PadButton:
+                        code: 0xF0140
+                        on_press: tetris.action("down")
+                    PadGap:
+        GameStatus:
+            text: tetris.status
+
+<SnakeScreen@Screen>:
+    name: "snake"
+    on_leave: snake.pause()
+    BoxLayout:
+        orientation: "vertical"
+        GameBar:
+            title: "Wąż"
+            BarButton:
+                text: "Graj" if (snake.paused or snake.over) else "Pauza"
+                on_release: snake.toggle_pause()
+            BarButton:
+                text: "Nowa gra"
+                on_release: snake.new_game()
+        BoxLayout:
+            padding: [10, 0, 0, 0]
+            Snake:
+                id: snake
+            AnchorLayout:
+                size_hint_x: None
+                width: 400
+                GridLayout:
+                    cols: 3
+                    spacing: 8
+                    size_hint: None, None
+                    size: 370, 370
+                    PadGap:
+                    PadButton:
+                        code: 0xF0143
+                        on_press: snake.turn("up")
+                    PadGap:
+                    PadButton:
+                        code: 0xF0141
+                        on_press: snake.turn("left")
+                    PadGap:
+                    PadButton:
+                        code: 0xF0142
+                        on_press: snake.turn("right")
+                    PadGap:
+                    PadButton:
+                        code: 0xF0140
+                        on_press: snake.turn("down")
+                    PadGap:
+        GameStatus:
+            text: snake.status
+
+<FootballScreen@Screen>:
+    name: "football"
+    BoxLayout:
+        orientation: "vertical"
+        GameBar:
+            title: "Piłkarzyki"
+            ModeButton:
+                game: football
+                players: 1
+                active: football.players == 1
+            ModeButton:
+                game: football
+                players: 2
+                active: football.players == 2
+            ModeButton:
+                game: football
+                players: 0
+                active: football.players == 0
+            BarButton:
+                text: "Nowa gra"
+                size: 170, 64
+                on_release: football.restart()
+        Football:
+            id: football
+        GameStatus:
+            text: football.status

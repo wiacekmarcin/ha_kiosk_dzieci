@@ -29,6 +29,12 @@ declare -A ICONS=(
   [gra_szachy]=265f      # pionek szachowy
   [gra_paint]=1f3a8      # paleta malarza - rysowanie
   [gra_kostka]=1f3b2     # kostka do gry
+  [gra_kropki]=1f533     # kwadrat z ramką - kropki
+  [gra_statki]=1f6a2     # statek - statki
+  [gra_pkropki]=1f534    # czerwona kropka - polskie kropki
+  [gra_tetris]=1f9f1     # cegła - tetris
+  [gra_waz]=1f40d        # wąż
+  [gra_pilkarzyki]=26bd  # piłka - piłkarzyki na papierze
 )
 for name in "${!ICONS[@]}"; do
   code=${ICONS[$name]}

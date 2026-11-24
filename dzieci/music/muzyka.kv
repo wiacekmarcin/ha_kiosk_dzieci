@@ -1,0 +1,185 @@
+#:import icons kiosk.icons
+# Ekran Muzyka (klasy w dzieci/music/__init__.py). Wczytywany po dzieci/games/gry.kv
+# (CloseButton, BarButton); aplikacja ma app.music (MusicPlayer) i nav("music").
+
+#:set MUZ_WARM (1.0, 0.84, 0.40, 1)
+#:set MUZ_TEXT (0.95, 0.95, 0.98, 1)
+#:set MUZ_BAR (0.16, 0.19, 0.29, 1)
+# Material Design Icons: play, pause, stop, skip-next
+#:set MUZ_PLAY 0xF040A
+#:set MUZ_PAUSE 0xF03E4
+#:set MUZ_STOP 0xF04DB
+#:set MUZ_NEXT 0xF04AD
+
+<MusicTile>:
+    orientation: "vertical"
+    size_hint_y: None
+    height: 150
+    padding: [6, 10, 6, 4]
+    spacing: 2
+    canvas.before:
+        Color:
+            rgba: MUZ_WARM if app.music.current_path == self.path else (0, 0, 0, 0)
+        RoundedRectangle:
+            pos: self.x - 4, self.y - 4
+            size: self.width + 8, self.height + 8
+            radius: [24]
+        Color:
+            rgba: (0.30, 0.36, 0.52, 1) if self.state == "down" else self.color
+        RoundedRectangle:
+            pos: self.pos
+            size: self.size
+            radius: [20]
+    Image:
+        source: root.icon
+        fit_mode: "contain"
+        size_hint_y: None
+        height: 72
+    Label:
+        text: root.title
+        font_size: "17sp"
+        bold: True
+        color: MUZ_TEXT
+        halign: "center"
+        valign: "middle"
+        text_size: self.width, self.height
+        shorten: True
+        shorten_from: "right"
+        max_lines: 2
+
+<AlbumHeader>:
+    size_hint_y: None
+    height: 56
+    font_size: "26sp"
+    bold: True
+    color: MUZ_WARM
+    halign: "left"
+    valign: "bottom"
+    text_size: self.size
+
+<MusicList>:
+    orientation: "vertical"
+    size_hint_y: None
+    height: self.minimum_height
+    padding: [24, 0, 24, 24]
+    spacing: 10
+
+# Okrągły przycisk sterowania (znak z czcionki ikon)
+<MusicButton@ButtonBehavior+AnchorLayout>:
+    code: 0
+    size_hint: None, None
+    size: 84, 84
+    canvas.before:
+        Color:
+            rgba: (0.30, 0.36, 0.52, 1) if self.state == "down" else (0.20, 0.24, 0.36, 1)
+        Ellipse:
+            pos: self.pos
+            size: self.size
+    Label:
+        text: chr(root.code) if root.code else ""
+        font_name: icons.FONT_NAME
+        font_size: "48sp"
+        color: MUZ_WARM
+        size_hint: None, None
+        size: self.texture_size
+
+<MusicScreen@Screen>:
+    name: "music"
+    on_enter: music_list.refresh()
+    BoxLayout:
+        orientation: "vertical"
+        BoxLayout:
+            size_hint_y: None
+            height: 84
+            padding: [16, 10]
+            spacing: 16
+            CloseButton:
+                on_release: app.nav("home")
+            Label:
+                text: "Muzyka"
+                font_size: "32sp"
+                bold: True
+                color: MUZ_WARM
+            # poprzednia i następna piosenka (cała lista, przez albumy)
+            NavButton:
+                code: 0xF0141
+                on_release: app.music.step(-1)
+            NavButton:
+                code: 0xF0142
+                on_release: app.music.step(1)
+        FloatLayout:
+            ScrollView:
+                pos: self.parent.pos
+                size: self.parent.size
+                do_scroll_x: False
+                bar_width: 10
+                MusicList:
+                    id: music_list
+            Label:
+                pos: self.parent.pos
+                size: self.parent.size
+                opacity: 1 if music_list.empty else 0
+                text: "Brak piosenek.\nWgraj je na tablet: tools/push_music.sh"
+                font_size: "28sp"
+                halign: "center"
+                color: MUZ_TEXT
+        # Teraz gra: ikonka, tytuł, postęp i przyciski
+        BoxLayout:
+            size_hint_y: None
+            height: 112
+            padding: [20, 14]
+            spacing: 18
+            canvas.before:
+                Color:
+                    rgba: MUZ_BAR
+                Rectangle:
+                    pos: self.pos
+                    size: self.size
+            Image:
+                source: app.music.icon or ""
+                opacity: 1 if app.music.playing else 0
+                fit_mode: "contain"
+                size_hint_x: None
+                width: 84
+            BoxLayout:
+                orientation: "vertical"
+                spacing: 4
+                Label:
+                    text: app.music.title if app.music.playing else app.music.status
+                    font_size: "28sp"
+                    bold: True
+                    color: MUZ_TEXT
+                    halign: "left"
+                    valign: "middle"
+                    text_size: self.size
+                    shorten: True
+                Label:
+                    text: app.music.album if app.music.playing else ""
+                    font_size: "20sp"
+                    color: MUZ_WARM
+                    halign: "left"
+                    valign: "middle"
+                    text_size: self.size
+                    shorten: True
+                Widget:
+                    size_hint_y: None
+                    height: 10
+                    canvas:
+                        Color:
+                            rgba: 1, 1, 1, 0.15
+                        RoundedRectangle:
+                            pos: self.pos
+                            size: self.size
+                            radius: [5]
+                        Color:
+                            rgba: MUZ_WARM
+                        RoundedRectangle:
+                            pos: self.pos
+                            size: self.width * app.music.progress, self.height
+                            radius: [5]
+            MusicButton:
+                code: MUZ_PLAY if (app.music.paused or not app.music.playing) else MUZ_PAUSE
+                on_release: app.music.toggle()
+            MusicButton:
+                code: MUZ_STOP
+                on_release: app.music.stop()

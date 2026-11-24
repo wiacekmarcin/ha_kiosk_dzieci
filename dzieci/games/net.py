@@ -58,10 +58,12 @@ class GameNet:
 
     def invite(self, game: str):
         self.session, self.peer, self.seq = uuid.uuid4().hex[:8], None, 0
+        self.game = game                # gra bieżącej partii (leave tylko z jej planszy)
         self._post({"type": "invite", "game": game, "session": self.session})
 
     def accept(self, msg: dict):
         self.session, self.peer, self.seq = msg["session"], msg["from"], 0
+        self.game = msg["game"]
         self._post({"type": "accept", "game": msg["game"], "session": self.session,
                     "to": self.peer})
 
@@ -80,7 +82,7 @@ class GameNet:
         if self.session:
             self._post({"type": "leave", "game": game, "session": self.session,
                         "to": self.peer})
-        self.session = self.peer = None
+        self.session = self.peer = self.game = None
 
     def mine(self, msg: dict) -> bool:
         """Komunikat dotyczy mojej bieżącej partii i jest do mnie."""

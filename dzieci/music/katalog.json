@@ -1,0 +1,552 @@
+{
+ "albums": [
+  {
+   "key": "przedszkolak",
+   "title": "Piosenki dla przedszkolaka",
+   "color": [
+    0.42,
+    0.25,
+    0.2,
+    1
+   ]
+  },
+  {
+   "key": "znane",
+   "title": "Piosenki znane i lubiane",
+   "color": [
+    0.2,
+    0.36,
+    0.3,
+    1
+   ]
+  },
+  {
+   "key": "fasolki",
+   "title": "Fasolki",
+   "color": [
+    0.22,
+    0.3,
+    0.48,
+    1
+   ]
+  },
+  {
+   "key": "ciotka",
+   "title": "Piosenki Ciotki Klotki",
+   "color": [
+    0.4,
+    0.22,
+    0.38,
+    1
+   ]
+  },
+  {
+   "key": "profesor",
+   "title": "Piosenki Profesora Ciekawskiego",
+   "color": [
+    0.2,
+    0.34,
+    0.42,
+    1
+   ]
+  },
+  {
+   "key": "english",
+   "title": "Piosenki po angielsku",
+   "color": [
+    0.36,
+    0.32,
+    0.18,
+    1
+   ]
+  }
+ ],
+ "songs": [
+  {
+   "file": "przedszkolak_01.mp3",
+   "title": "Panie Janie",
+   "icon": "1f514",
+   "album": "przedszkolak"
+  },
+  {
+   "file": "przedszkolak_02.mp3",
+   "title": "Uciekaj, myszko",
+   "icon": "1f42d",
+   "album": "przedszkolak"
+  },
+  {
+   "file": "przedszkolak_03.mp3",
+   "title": "Kaczuszki",
+   "icon": "1f986",
+   "album": "przedszkolak"
+  },
+  {
+   "file": "przedszkolak_04.mp3",
+   "title": "Wlazł kotek na płotek",
+   "icon": "1f431",
+   "album": "przedszkolak"
+  },
+  {
+   "file": "przedszkolak_05.mp3",
+   "title": "Moja Ulijanko",
+   "icon": "1f469",
+   "album": "przedszkolak"
+  },
+  {
+   "file": "przedszkolak_06.mp3",
+   "title": "Jawor, jawor",
+   "icon": "1f333",
+   "album": "przedszkolak"
+  },
+  {
+   "file": "przedszkolak_07.mp3",
+   "title": "Głowa, ramiona",
+   "icon": "1f9d2",
+   "album": "przedszkolak"
+  },
+  {
+   "file": "przedszkolak_08.mp3",
+   "title": "Jadą, jadą misie",
+   "icon": "1f9f8",
+   "album": "przedszkolak"
+  },
+  {
+   "file": "przedszkolak_09.mp3",
+   "title": "Miała baba koguta",
+   "icon": "1f413",
+   "album": "przedszkolak"
+  },
+  {
+   "file": "przedszkolak_10.mp3",
+   "title": "Słoneczko późno dzisiaj wstało",
+   "icon": "1f31e",
+   "album": "przedszkolak"
+  },
+  {
+   "file": "przedszkolak_11.mp3",
+   "title": "Poszła żabka po wodę",
+   "icon": "1f438",
+   "album": "przedszkolak"
+  },
+  {
+   "file": "przedszkolak_12.mp3",
+   "title": "Krakowiaczek jeden",
+   "icon": "1f57a",
+   "album": "przedszkolak"
+  },
+  {
+   "file": "przedszkolak_13.mp3",
+   "title": "Płynie Wisła, płynie",
+   "icon": "1f30a",
+   "album": "przedszkolak"
+  },
+  {
+   "file": "znane_01.mp3",
+   "title": "Jedzie pociąg",
+   "icon": "1f682",
+   "album": "znane"
+  },
+  {
+   "file": "znane_02.mp3",
+   "title": "Karolinka",
+   "icon": "1f467",
+   "album": "znane"
+  },
+  {
+   "file": "znane_03.mp3",
+   "title": "Jagódki",
+   "icon": "1fad0",
+   "album": "znane"
+  },
+  {
+   "file": "znane_04.mp3",
+   "title": "Pieski małe dwa",
+   "icon": "1f415",
+   "album": "znane"
+  },
+  {
+   "file": "znane_05.mp3",
+   "title": "Mało nas",
+   "icon": "1f46b",
+   "album": "znane"
+  },
+  {
+   "file": "znane_06.mp3",
+   "title": "Malowany wózek",
+   "icon": "1f6d2",
+   "album": "znane"
+  },
+  {
+   "file": "znane_07.mp3",
+   "title": "Sanna",
+   "icon": "1f6f7",
+   "album": "znane"
+  },
+  {
+   "file": "znane_08.mp3",
+   "title": "Co dzieci widziały w drodze",
+   "icon": "1f697",
+   "album": "znane"
+  },
+  {
+   "file": "znane_09.mp3",
+   "title": "Krakowiaczek",
+   "icon": "1f57a",
+   "album": "znane"
+  },
+  {
+   "file": "znane_10.mp3",
+   "title": "Stokrotka",
+   "icon": "1f33c",
+   "album": "znane"
+  },
+  {
+   "file": "znane_11.mp3",
+   "title": "Bajka iskierki",
+   "icon": "2728",
+   "album": "znane"
+  },
+  {
+   "file": "fasolki_01.mp3",
+   "title": "Fasola",
+   "icon": "1fad8",
+   "album": "fasolki"
+  },
+  {
+   "file": "fasolki_02.mp3",
+   "title": "Gumisie",
+   "icon": "1f43b",
+   "album": "fasolki"
+  },
+  {
+   "file": "fasolki_03.mp3",
+   "title": "Kolorowe kredki",
+   "icon": "1f58d",
+   "album": "fasolki"
+  },
+  {
+   "file": "fasolki_04.mp3",
+   "title": "Kubuś Puchatek",
+   "icon": "1f36f",
+   "album": "fasolki"
+  },
+  {
+   "file": "fasolki_05.mp3",
+   "title": "Muminki",
+   "icon": "1f99b",
+   "album": "fasolki"
+  },
+  {
+   "file": "fasolki_06.mp3",
+   "title": "Pies na medal",
+   "icon": "1f415",
+   "album": "fasolki"
+  },
+  {
+   "file": "fasolki_07.mp3",
+   "title": "Mam chusteczkę haftowaną",
+   "icon": "1f9e3",
+   "album": "fasolki"
+  },
+  {
+   "file": "ciotka_01.mp3",
+   "title": "A na razie rośniemy",
+   "icon": "1f331",
+   "album": "ciotka"
+  },
+  {
+   "file": "ciotka_02.mp3",
+   "title": "Myj zęby",
+   "icon": "1faa5",
+   "album": "ciotka"
+  },
+  {
+   "file": "ciotka_03.mp3",
+   "title": "Mydło lubi zabawę",
+   "icon": "1f9fc",
+   "album": "ciotka"
+  },
+  {
+   "file": "ciotka_04.mp3",
+   "title": "Domowa piosenka",
+   "icon": "1f3e0",
+   "album": "ciotka"
+  },
+  {
+   "file": "ciotka_05.mp3",
+   "title": "Kolega ślimak",
+   "icon": "1f40c",
+   "album": "ciotka"
+  },
+  {
+   "file": "ciotka_06.mp3",
+   "title": "Ropucha Kłamczucha",
+   "icon": "1f438",
+   "album": "ciotka"
+  },
+  {
+   "file": "ciotka_07.mp3",
+   "title": "Czuję głód",
+   "icon": "1f37d",
+   "album": "ciotka"
+  },
+  {
+   "file": "ciotka_08.mp3",
+   "title": "Blues z kapelusza",
+   "icon": "1f3a9",
+   "album": "ciotka"
+  },
+  {
+   "file": "ciotka_09.mp3",
+   "title": "Rolki",
+   "icon": "1f6fc",
+   "album": "ciotka"
+  },
+  {
+   "file": "ciotka_10.mp3",
+   "title": "Stryszaki",
+   "icon": "1f3da",
+   "album": "ciotka"
+  },
+  {
+   "file": "ciotka_11.mp3",
+   "title": "Ale leń",
+   "icon": "1f971",
+   "album": "ciotka"
+  },
+  {
+   "file": "ciotka_12.mp3",
+   "title": "Zabiorę brata",
+   "icon": "1f466",
+   "album": "ciotka"
+  },
+  {
+   "file": "ciotka_13.mp3",
+   "title": "Marzenia miski",
+   "icon": "1f963",
+   "album": "ciotka"
+  },
+  {
+   "file": "ciotka_14.mp3",
+   "title": "Gdy leżę na plaży",
+   "icon": "1f3d6",
+   "album": "ciotka"
+  },
+  {
+   "file": "ciotka_15.mp3",
+   "title": "Mop - rock",
+   "icon": "1f3b8",
+   "album": "ciotka"
+  },
+  {
+   "file": "ciotka_16.mp3",
+   "title": "Gdy tylko Cyganie",
+   "icon": "1f3bb",
+   "album": "ciotka"
+  },
+  {
+   "file": "ciotka_17.mp3",
+   "title": "Rzepkę sobie skrobię",
+   "icon": "1f955",
+   "album": "ciotka"
+  },
+  {
+   "file": "ciotka_18.mp3",
+   "title": "Katarynka Karolinka",
+   "icon": "1f3b6",
+   "album": "ciotka"
+  },
+  {
+   "file": "ciotka_19.mp3",
+   "title": "Moja fantazja",
+   "icon": "1f308",
+   "album": "ciotka"
+  },
+  {
+   "file": "ciotka_20.mp3",
+   "title": "Wyciągnij dłoń",
+   "icon": "1f91d",
+   "album": "ciotka"
+  },
+  {
+   "file": "profesor_01.mp3",
+   "title": "Witaminki",
+   "icon": "1f34e",
+   "album": "profesor"
+  },
+  {
+   "file": "profesor_02.mp3",
+   "title": "Zając Poziomka",
+   "icon": "1f430",
+   "album": "profesor"
+  },
+  {
+   "file": "profesor_03.mp3",
+   "title": "Latający odkurzacz",
+   "icon": "1f9f9",
+   "album": "profesor"
+  },
+  {
+   "file": "profesor_04.mp3",
+   "title": "Czarownica z księżyca",
+   "icon": "1f9d9",
+   "album": "profesor"
+  },
+  {
+   "file": "profesor_05.mp3",
+   "title": "Duchy łakomczuchy",
+   "icon": "1f47b",
+   "album": "profesor"
+  },
+  {
+   "file": "profesor_06.mp3",
+   "title": "Srebrna koleżanka",
+   "icon": "1f31f",
+   "album": "profesor"
+  },
+  {
+   "file": "profesor_07.mp3",
+   "title": "Papużki nierozłączki",
+   "icon": "1f99c",
+   "album": "profesor"
+  },
+  {
+   "file": "profesor_08.mp3",
+   "title": "Zmora z telewizora",
+   "icon": "1f4fa",
+   "album": "profesor"
+  },
+  {
+   "file": "profesor_09.mp3",
+   "title": "Trzy wesołe wielkoludki",
+   "icon": "1f9cc",
+   "album": "profesor"
+  },
+  {
+   "file": "profesor_10.mp3",
+   "title": "Wujcio Wariatuncio",
+   "icon": "1f92a",
+   "album": "profesor"
+  },
+  {
+   "file": "profesor_11.mp3",
+   "title": "Pocałuj żabkę w łapkę",
+   "icon": "1f438",
+   "album": "profesor"
+  },
+  {
+   "file": "profesor_12.mp3",
+   "title": "Pierścionek od babci",
+   "icon": "1f48d",
+   "album": "profesor"
+  },
+  {
+   "file": "profesor_13.mp3",
+   "title": "Pójdę przez park",
+   "icon": "1f333",
+   "album": "profesor"
+  },
+  {
+   "file": "profesor_14.mp3",
+   "title": "Kapelusz Uśmiechmistrza",
+   "icon": "1f3a9",
+   "album": "profesor"
+  },
+  {
+   "file": "profesor_15.mp3",
+   "title": "Jesteśmy jedną rodziną",
+   "icon": "1f46a",
+   "album": "profesor"
+  },
+  {
+   "file": "profesor_16.mp3",
+   "title": "Dżdżownica jazz",
+   "icon": "1fab1",
+   "album": "profesor"
+  },
+  {
+   "file": "profesor_17.mp3",
+   "title": "Moje hobby mniam mniam",
+   "icon": "1f36d",
+   "album": "profesor"
+  },
+  {
+   "file": "profesor_18.mp3",
+   "title": "Przedszkolne sztuczki",
+   "icon": "1fa84",
+   "album": "profesor"
+  },
+  {
+   "file": "profesor_19.mp3",
+   "title": "Wcale, wcale, doskonale",
+   "icon": "1f44d",
+   "album": "profesor"
+  },
+  {
+   "file": "profesor_20.mp3",
+   "title": "Kropelka złotych marzeń",
+   "icon": "1f4a7",
+   "album": "profesor"
+  },
+  {
+   "file": "english_01.mp3",
+   "title": "Ding Dong Song",
+   "icon": "1f514",
+   "album": "english"
+  },
+  {
+   "file": "english_02.mp3",
+   "title": "What I Like",
+   "icon": "2764",
+   "album": "english"
+  },
+  {
+   "file": "english_03.mp3",
+   "title": "Let's Go to the Zoo",
+   "icon": "1f981",
+   "album": "english"
+  },
+  {
+   "file": "english_04.mp3",
+   "title": "Moody Weather",
+   "icon": "26c5",
+   "album": "english"
+  },
+  {
+   "file": "english_05.mp3",
+   "title": "My Family",
+   "icon": "1f46a",
+   "album": "english"
+  },
+  {
+   "file": "english_06.mp3",
+   "title": "My Favorite Toy",
+   "icon": "1fa80",
+   "album": "english"
+  },
+  {
+   "file": "english_07.mp3",
+   "title": "When Music Plays",
+   "icon": "1f3b6",
+   "album": "english"
+  },
+  {
+   "file": "english_08.mp3",
+   "title": "Rain, Rain, Go Away",
+   "icon": "2614",
+   "album": "english"
+  },
+  {
+   "file": "english_09.mp3",
+   "title": "Hush, Little Baby",
+   "icon": "1f476",
+   "album": "english"
+  },
+  {
+   "file": "english_10.mp3",
+   "title": "Hickory Dickory Dock",
+   "icon": "1f570",
+   "album": "english"
+  }
+ ]
+}
