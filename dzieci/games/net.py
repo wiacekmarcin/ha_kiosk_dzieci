@@ -26,7 +26,12 @@ MAX_AGE = 90
 
 
 class GameNet:
-    def __init__(self, settings: dict, name: str, on_event):
+    def __init__(self, settings: dict, name: str, on_event, center=None):
+        """center - połączenie z Kiosk Center (kiosk/center.py): gdy jest aktywne, komunikaty
+        gry idą przez centrum zamiast przez encję HA."""
+        self.center = center
+        if center is not None:
+            center.on("game", self._center_event)
         self.base = settings["url"].rstrip("/")
         self.headers = {"Authorization": f"Bearer {settings['token']}"}
         self.name = name
@@ -41,6 +46,10 @@ class GameNet:
 
     # --- wysyłanie ----------------------------------------------------------------------
     def _post(self, payload: dict):
+        if self.center and self.center.connected:      # Kiosk Center - od razu do drugiego tabletu
+            self.center.send({"type": "game", "to": payload.get("to") or "*",
+                              "msg": {"from": self.name, **payload}})
+            return
         state = uuid.uuid4().hex[:12]
         self._seen = state              # własnego komunikatu nie przetwarzamy
         attrs = {"friendly_name": "Gra między tabletami", "icon": "mdi:gamepad-variant",
@@ -92,11 +101,19 @@ class GameNet:
     # --- odbiór -------------------------------------------------------------------------
     def _run(self):
         while not self._stop.is_set():
-            try:
-                self._poll()
-            except Exception as e:      # noqa: BLE001
-                Logger.debug(f"Gra: odczyt: {e}")
+            if not (self.center and self.center.connected):    # z centrum - bez odpytywania HA
+                try:
+                    self._poll()
+                except Exception as e:      # noqa: BLE001
+                    Logger.debug(f"Gra: odczyt: {e}")
             self._stop.wait(POLL_SECONDS)
+
+    def _center_event(self, header: dict, _data):
+        """Komunikat gry od drugiego tabletu przez Kiosk Center (wątek UI)."""
+        msg = dict(header.get("msg") or {})
+        msg["from"] = header.get("from", msg.get("from"))
+        if msg.get("type") and msg["from"] != self.name:
+            self.on_event(msg)
 
     def _poll(self):
         r = requests.get(f"{self.base}/api/states/{ENTITY}", headers=self.headers, timeout=10)

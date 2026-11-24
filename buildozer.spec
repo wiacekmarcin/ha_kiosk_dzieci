@@ -2,7 +2,7 @@
 title = Kiosk dzieci
 package.name = hakioskdzieci
 package.domain = pl.mieszkanie
-version = 0.27
+version = 0.29
 source.dir = .
 source.include_exts = py,png,kv,ttf,json,ogg
 source.exclude_dirs = tools, bin, .buildozer, __pycache__, .venv, venv

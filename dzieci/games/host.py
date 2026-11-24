@@ -104,7 +104,9 @@ class GamesHost:
         """Wołać w build(): sieć gier przez HA (gdy jest adres i token), gra bezpośrednia
         (zawsze, także bez HA) i przyciski tabletu."""
         if settings.get("url") and settings.get("token"):
-            self.net = GameNet(settings, name, self.on_game_event)
+            # Kiosk Center (połączenie z VoiceLink): gdy działa, gra idzie przez centrum
+            center = getattr(getattr(self, "voice", None), "center", None)
+            self.net = GameNet(settings, name, self.on_game_event, center=center)
         try:
             self.direct = DirectNet(name, self.on_game_event)
         except OSError as e:
