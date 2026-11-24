@@ -8,6 +8,9 @@ Uruchomienie (PC, wirtualny ekran): xvfb-run -a python tools/smoke_test.py
 import os
 import random
 import sys
+import shutil
+import tempfile
+from pathlib import Path
 import traceback
 from datetime import datetime, timezone
 
@@ -21,6 +24,15 @@ from kivy.clock import Clock  # noqa: E402
 
 from dzieci.games.board import GAMES, NETWORK  # noqa: E402
 from dzieci.games.net import GameNet  # noqa: E402
+from dzieci.games.direct import DirectNet  # noqa: E402
+from dzieci.games.ships import N as N_SHIPS  # noqa: E402
+from dzieci import camera as camera_mod  # noqa: E402
+
+# aparat: zdjęcia testowe w katalogu tymczasowym (nie w katalogu aplikacji na PC)
+PHOTOS = tempfile.mkdtemp(prefix="aparat_")
+for _name in ("a", "b"):
+    shutil.copy("dzieci/coloring/pages/chomik.png", os.path.join(PHOTOS, f"zdjecie_{_name}.jpg"))
+camera_mod.photos_dir = lambda: (Path(PHOTOS), True)
 
 ERRORS = []
 PEER = "Tablet 2"
@@ -94,6 +106,7 @@ class Smoke(main.DzieciApp):
     def on_start(self):
         sm = self.root.ids.sm
         self.net = FakeNet(self.tablet_name)
+        self.peer, self.peer_events = None, []      # drugi tablet w grze bezpośredniej
         steps = [lambda: self.nav("games")]
         for game in ("tictactoe", "checkers", "chess"):
             steps.append(lambda g=game: self.nav(g))
@@ -161,8 +174,15 @@ class Smoke(main.DzieciApp):
                           "Wstecz w grze nie powinno nic robić"),
             lambda: check(self._games_key(None, 319) is True, "Menu w grze nie powinno nic robić"),
             lambda: self.nav("home"),
-            lambda: check(self._games_key(None, 27) is False,
-                          "Wstecz na ekranie startowym powinno działać systemowo"),
+            lambda: check(self._games_key(None, 27) is True,
+                          "Wstecz na ekranie startowym też ma być zablokowane (kiosk)"),
+            # wyjście: okno potwierdzenia, po 2 razy "Tak" jeszcze otwarte (trzeba 3 razy)
+            lambda: setattr(self, "exit_popup", __import__("dzieci.kiosklock", fromlist=["x"]).ExitPopup()),
+            lambda: [self.exit_popup.open(), self.exit_popup.yes(), self.exit_popup.yes()],
+            lambda: check(self.exit_popup.presses == 2 and "1 raz" in self.exit_popup.info.text
+                          and self.exit_popup in main.Window.children,
+                          f"wyjście: okno po 2 razy Tak ({self.exit_popup.info.text})"),
+            lambda: self.exit_popup.dismiss(),
             # kropki: z komputerem i we dwóch, potem przez sieć (ruch to cała lista kresek)
             lambda: self.nav("dots"),
             lambda: setattr(GAMES["dots"], "players", 2),
@@ -182,7 +202,7 @@ class Smoke(main.DzieciApp):
             lambda: check(GAMES["dots"].history == [0, 1] and GAMES["dots"].current_side() == 0,
                           f"kropki: kreski z sieci {GAMES['dots'].history}"),
             # statki: wejście na ekran zaprasza, drugi tablet przyjmuje, strzały i odpowiedzi
-            lambda: self.nav("ships"),
+            lambda: [self.nav("ships"), GAMES["ships"].set_mode(NETWORK)],
             None, None, None, None, None, None, None, None, None, None,
             lambda: check(self.net.sent[-1]["type"] == "invite" and self.net.sent[-1]["game"] == "ships",
                           f"statki: brak zaproszenia {self.net.sent[-1]}"),
@@ -204,6 +224,40 @@ class Smoke(main.DzieciApp):
                           and self.net.sent[-1]["move"][3] == 2,
                           f"statki: brak odpowiedzi o zatopieniu {self.net.sent[-1]}"),
             lambda: check(GAMES["ships"].current_side() == 1, "statki: po trafieniu strzela dalej rywal"),
+            # statki z komputerem: mój strzał, potem strzały komputera
+            lambda: GAMES["ships"].set_mode(1),
+            lambda: check(GAMES["ships"].players == 1 and not GAMES["ships"].finished,
+                          "statki: brak trybu z komputerem"),
+            lambda: [GAMES["ships"].tap(r, c) for r in range(N_SHIPS) for c in range(N_SHIPS)
+                     if GAMES["ships"].human_turn()],
+            lambda: check(GAMES["ships"].current_side() == 1 or GAMES["ships"].finished,
+                          "statki: po pudle kolej nie przeszła na komputer"),
+            None, None, None, None, None, None, None, None, None, None, None, None, None, None, None,
+            None, None, None, None, None, None, None, None, None, None, None, None, None, None, None,
+            lambda: check(len(GAMES["ships"].incoming) >= 1, "statki: komputer nie strzelał"),
+            # gra bezpośrednia (bez HA): prawdziwe gniazda TCP na tym komputerze
+            lambda: [self.nav("tictactoe"), GAMES["tictactoe"].set_mode(NETWORK, "direct")],
+            lambda: check(self.direct is not None and self.direct.session
+                          and self.direct._server is not None, "bezpośrednio: brak serwera"),
+            lambda: setattr(self, "peer", DirectNet(PEER, self.peer_events.append)),
+            lambda: self.peer.accept({"session": self.direct.session, "from": self.tablet_name,
+                                      "game": "tictactoe", "_addr": "127.0.0.1",
+                                      "port": self.direct._server.getsockname()[1]}),
+            None, None, None, None, None, None, None, None, None, None,
+            lambda: check(GAMES["tictactoe"].net_ready and GAMES["tictactoe"].link == "direct",
+                          "bezpośrednio: drugi tablet nie dołączył"),
+            lambda: GAMES["tictactoe"].tap(1, 1),
+            None, None, None, None, None, None, None, None, None, None,
+            lambda: check(any(m.get("type") == "move" and m.get("move") == [4]
+                              for m in self.peer_events), f"bezpośrednio: ruch nie doszedł {self.peer_events}"),
+            lambda: self.peer.send_move("tictactoe", [0]),
+            None, None, None, None, None, None, None, None, None, None,
+            lambda: check(GAMES["tictactoe"].cells[0] == 1, "bezpośrednio: ruch drugiego tabletu"),
+            lambda: self.peer.leave("tictactoe"),
+            None, None, None, None, None, None, None, None, None, None,
+            lambda: check("zakończył" in GAMES["tictactoe"].status,
+                          f"bezpośrednio: brak końca gry ({GAMES['tictactoe'].status})"),
+            lambda: GAMES["tictactoe"].set_mode(2),
             # polskie kropki: otoczenie niebieskiej kropki czerwonymi, komputer, sieć
             lambda: self.nav("pdots"),
             lambda: setattr(GAMES["pdots"], "players", 2),
@@ -312,6 +366,31 @@ class Smoke(main.DzieciApp):
                           f"kolorowanki: następna {sm.get_screen('colorpage').ids.kol.title}"),
             lambda: [sm.get_screen("colorpage").ids.kol.paint(300, 450),
                      sm.get_screen("colorpage").ids.kol.clear()],
+            # aparat: rozmiary (kadr podglądu = kadr zdjęcia), ekran bez kamery na PC,
+            # przeglądanie zdjęć z katalogu testowego
+            lambda: check(camera_mod.choose_sizes(
+                [(1920, 1080), (1280, 720), (1024, 768), (640, 480)],
+                [(2048, 1536), (1920, 1080)]) == ((1024, 768), (2048, 1536)),
+                "aparat: zły wybór rozmiaru podglądu"),
+            lambda: self.nav("camera"),
+            None, None, None, None,
+            lambda: check(sm.current == "camera" and sm.get_screen("camera").message
+                          in ("", "Aparat niedostępny"),
+                          f"aparat: {sm.get_screen('camera').message}"),
+            lambda: sm.get_screen("camera").shoot(),
+            lambda: self.nav("photos"),
+            lambda: check(sm.get_screen("photos").title == "Zdjęcie 2 z 2",
+                          f"aparat: przeglądanie {sm.get_screen('photos').title}"),
+            lambda: sm.get_screen("photos").step(1),
+            lambda: check(sm.get_screen("photos").title == "Zdjęcie 1 z 2"
+                          and sm.get_screen("photos").source.endswith("a.jpg"),
+                          "aparat: następne zdjęcie"),
+            lambda: self.nav("camera"),
+            lambda: check(sm.get_screen("camera").count == 2
+                          and sm.get_screen("camera").last_photo.endswith("b.jpg"),
+                          "aparat: miniatura ostatniego zdjęcia"),
+            lambda: self.nav("home"),
+            lambda: check(sm.get_screen("camera")._core is None, "aparat: kamera nie zamknięta"),
             lambda: self.nav("dice"), lambda: sm.get_screen("dice").ids.dice.roll(),
             None, None, None,
             lambda: self.nav("paint"),
@@ -333,6 +412,7 @@ class Smoke(main.DzieciApp):
 
 
 Smoke().run()
+shutil.rmtree(PHOTOS, ignore_errors=True)
 if ERRORS:
     print("SMOKE_FAIL")
     print("\n".join(ERRORS[:5]))

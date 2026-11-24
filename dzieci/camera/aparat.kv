@@ -1,0 +1,196 @@
+#:import icons kiosk.icons
+# Aparat i przeglądanie zdjęć (klasy w dzieci/camera/__init__.py). Wczytywane po
+# dzieci/games/gry.kv (CloseButton, NavButton); aplikacja ma nav("camera") i nav("photos").
+
+#:set APA_WARM (1.0, 0.84, 0.40, 1)
+#:set APA_TEXT (0.95, 0.95, 0.98, 1)
+#:set APA_TILE (0.20, 0.24, 0.36, 1)
+#:set APA_TILE_DOWN (0.30, 0.36, 0.52, 1)
+# Material Design Icons: camera-switch, camera, image-multiple
+#:set APA_SWITCH 0xF0108
+#:set APA_CAMERA 0xF0100
+#:set APA_PHOTOS 0xF02F9
+
+# Okrągły przycisk z ikoną (przełączanie kamery)
+<RoundIconButton@ButtonBehavior+AnchorLayout>:
+    code: 0
+    size_hint: None, None
+    size: 110, 110
+    canvas.before:
+        Color:
+            rgba: APA_TILE_DOWN if self.state == "down" else APA_TILE
+        Ellipse:
+            pos: self.pos
+            size: self.size
+    Label:
+        text: chr(root.code) if root.code else ""
+        font_name: icons.FONT_NAME
+        font_size: "56sp"
+        color: APA_WARM if root.disabled is False else (0.5, 0.5, 0.55, 1)
+        size_hint: None, None
+        size: self.texture_size
+
+# Migawka: duże białe koło z obwódką; w trakcie zapisu - szare
+<ShutterButton@ButtonBehavior+Widget>:
+    busy: False
+    size_hint: None, None
+    size: 140, 140
+    canvas:
+        Color:
+            rgba: APA_WARM
+        Ellipse:
+            pos: self.pos
+            size: self.size
+        Color:
+            rgba: 0.10, 0.12, 0.19, 1
+        Ellipse:
+            pos: self.x + 9, self.y + 9
+            size: self.width - 18, self.height - 18
+        Color:
+            rgba: (0.55, 0.55, 0.6, 1) if self.busy else ((0.85, 0.85, 0.88, 1) if self.state == "down" else (1, 1, 1, 1))
+        Ellipse:
+            pos: self.x + 16, self.y + 16
+            size: self.width - 32, self.height - 32
+
+# Miniatura ostatniego zdjęcia - otwiera przeglądanie
+<PhotoThumb@ButtonBehavior+FloatLayout>:
+    source: ""
+    size_hint: None, None
+    size: 140, 110
+    canvas.before:
+        Color:
+            rgba: APA_TILE_DOWN if self.state == "down" else APA_TILE
+        RoundedRectangle:
+            pos: self.pos
+            size: self.size
+            radius: [18]
+    Image:
+        source: root.source
+        nocache: True
+        fit_mode: "contain"
+        opacity: 1 if root.source else 0
+        pos_hint: {"x": 0.04, "y": 0.05}
+        size_hint: 0.92, 0.9
+    Label:
+        text: chr(APA_PHOTOS)
+        font_name: icons.FONT_NAME
+        font_size: "52sp"
+        color: APA_WARM
+        opacity: 0 if root.source else 1
+        pos_hint: {"x": 0, "y": 0}
+
+<CameraScreen>:
+    name: "camera"
+    BoxLayout:
+        orientation: "vertical"
+        BoxLayout:
+            size_hint_y: None
+            height: 84
+            padding: [16, 10]
+            spacing: 12
+            CloseButton:
+                on_release: app.nav("home")
+            Label:
+                text: "Aparat"
+                font_size: "32sp"
+                bold: True
+                color: APA_WARM
+                size_hint_x: None
+                width: 160
+            Label:
+                text: root.storage + (f"   •   zdjęć: {root.count}" if root.count else "")
+                font_size: "22sp"
+                color: APA_TEXT
+                text_size: self.size
+                halign: "right"
+                valign: "middle"
+                shorten: True
+        BoxLayout:
+            padding: [10, 0, 10, 10]
+            spacing: 10
+            FloatLayout:
+                canvas.before:
+                    Color:
+                        rgba: 0, 0, 0, 1
+                    Rectangle:
+                        pos: self.pos
+                        size: self.size
+                CameraView:
+                    id: view
+                    pos_hint: {"x": 0, "y": 0}
+                    size_hint: 1, 1
+                Label:
+                    text: root.message
+                    font_size: "30sp"
+                    bold: True
+                    color: APA_TEXT
+                    pos_hint: {"x": 0, "y": 0}
+                Widget:
+                    id: flash
+                    opacity: 0
+                    pos_hint: {"x": 0, "y": 0}
+                    canvas:
+                        Color:
+                            rgba: 1, 1, 1, 1
+                        Rectangle:
+                            pos: self.pos
+                            size: self.size
+            BoxLayout:
+                orientation: "vertical"
+                size_hint_x: None
+                width: 150
+                padding: [5, 16]
+                spacing: 10
+                AnchorLayout:
+                    RoundIconButton:
+                        code: APA_SWITCH
+                        disabled: root.cameras < 2
+                        on_release: root.switch()
+                AnchorLayout:
+                    ShutterButton:
+                        busy: root.busy
+                        on_release: root.shoot()
+                AnchorLayout:
+                    PhotoThumb:
+                        source: root.last_photo
+                        on_release: app.nav("photos")
+
+<PhotosScreen>:
+    name: "photos"
+    BoxLayout:
+        orientation: "vertical"
+        BoxLayout:
+            size_hint_y: None
+            height: 84
+            padding: [16, 10]
+            spacing: 12
+            CloseButton:
+                on_release: app.nav("camera")
+            Label:
+                text: root.title
+                font_size: "30sp"
+                bold: True
+                color: APA_WARM
+                text_size: self.size
+                halign: "center"
+                valign: "middle"
+                shorten: True
+            NavButton:
+                code: 0xF0141
+                on_release: root.step(-1)
+            NavButton:
+                code: 0xF0142
+                on_release: root.step(1)
+        FloatLayout:
+            Image:
+                source: root.source
+                nocache: True
+                fit_mode: "contain"
+                opacity: 1 if root.source else 0
+                pos_hint: {"x": 0.01, "y": 0.01}
+                size_hint: 0.98, 0.98
+            Label:
+                text: "" if root.source else "Zrób pierwsze zdjęcie w Aparacie"
+                font_size: "30sp"
+                color: APA_TEXT
+                pos_hint: {"x": 0, "y": 0}

@@ -15,7 +15,7 @@ Gra przez sieć: ruch wysyłany jako lista pól drogi pionka [r0, c0, r1, c1, ..
 """
 import random
 
-from kivy.graphics import Color, Ellipse, Line, Rectangle
+from kivy.graphics import Color, Ellipse, Line, Rectangle, RoundedRectangle
 
 from dzieci.games.board import BoardWidget
 
@@ -134,6 +134,7 @@ def apply(board, move):
 class Checkers(BoardWidget):
     SIZE = N
     GAME = "checkers"
+    DOT = True                  # kolor strony jako kółko obok napisu
 
     def __init__(self, **kwargs):
         self.board = initial()
@@ -143,11 +144,13 @@ class Checkers(BoardWidget):
         self.candidates = []        # ruchy wybranego pionka zgodne z dotychczasowymi krokami
         self.step = 0               # ile kroków bicia wielokrotnego już zrobiono
         self.finished = False
+        self.taken = []             # zbite pionki (pokazywane z boku planszy)
         super().__init__(**kwargs)
         self.new_game()
 
     def new_game(self, *_):
         self.board = initial()
+        self.taken = []
         self.player = 0
         self.finished = False
         self._start_turn()
@@ -169,12 +172,15 @@ class Checkers(BoardWidget):
         if not self.moves:
             self.finished = True
             self.status = self.winner_text(1 - self.player)
+            self.game_over(1 - self.player)
         else:
             self.refresh_status()
         self.redraw()
         self.schedule_ai()
 
     def _play(self, move):
+        for r, c in move["captured"]:   # zbite pionki - na listę z boku planszy
+            self.taken.append(self.board[r][c])
         self.board = apply(self.board, move)
         self.player = 1 - self.player
         self._start_turn()
@@ -260,19 +266,41 @@ class Checkers(BoardWidget):
                 for target in {m["path"][self.step + 1] for m in self.candidates}:
                     cx, cy = self.cell_center(*target)
                     Ellipse(pos=(cx - c * 0.15, cy - c * 0.15), size=(c * 0.3, c * 0.3))
+        self._draw_taken()
+
+    def _draw_taken(self):
+        """Zbite pionki z boku planszy: białe po lewej, czarne po prawej."""
+        x0, y0 = self.origin
+        room = x0 - self.x - 12
+        if room < 30:
+            return
+        s = min(self.cell * 0.7, room / 2)
+        with self.canvas:
+            for player, left in ((0, self.x + 6), (1, x0 + self.side + 6)):
+                pieces = [p for p in self.taken if p[0] == player]
+                if pieces:              # jasne tło jak plansza - czarne pionki widoczne
+                    rows = (len(pieces) + 1) // 2
+                    Color(*LIGHT)
+                    RoundedRectangle(pos=(left - 4, y0 + self.side - rows * s - 4),
+                                     size=(2 * s + 8, rows * s + 8), radius=[10])
+                for i, piece in enumerate(pieces):
+                    self._disc(left + (i % 2) * s + s / 2, y0 + self.side - (i // 2) * s - s / 2,
+                               s * 0.42, piece, 1.0)
 
     def _piece(self, r, col, piece, alpha):
-        player, king = piece
-        c = self.cell
         cx, cy = self.cell_center(r, col)
-        rad = c * 0.38
+        self._disc(cx, cy, self.cell * 0.38, piece, alpha)
+
+    def _disc(self, cx, cy, rad, piece, alpha):
+        """Pionek (krążek, damka z koroną) o środku (cx, cy) i promieniu rad."""
+        player, king = piece
         Color(*RIM[player][:3], alpha)
         Ellipse(pos=(cx - rad, cy - rad), size=(2 * rad, 2 * rad))
         Color(*PIECE[player][:3], alpha)
         rad2 = rad * 0.86
         Ellipse(pos=(cx - rad2, cy - rad2), size=(2 * rad2, 2 * rad2))
         Color(*RIM[player][:3], alpha)
-        Line(circle=(cx, cy, rad * 0.55), width=max(1, c * 0.02))
+        Line(circle=(cx, cy, rad * 0.55), width=max(1, rad * 0.05))
         if king:
             Color(*CROWN[:3], alpha)
-            Line(circle=(cx, cy, rad * 0.35), width=max(2, c * 0.05))
+            Line(circle=(cx, cy, rad * 0.35), width=max(2, rad * 0.13))

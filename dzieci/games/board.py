@@ -5,9 +5,10 @@ Ruch zawsze dwoma stuknięciami: stuknięcie pionka pokazuje zielone kropki na d
 polach, stuknięcie w pole z kropką przesuwa pionek (bez przeciągania palcem).
 
 Tryby (players): 2 - dwóch graczy na jednym tablecie, 1 - gra z komputerem (poziom łatwy),
-0 - gra przez sieć z innym tabletem (przez Home Assistant, moduł net). W grze sieciowej
-zapraszający gra stroną 0 (białe, krzyżyk), przyjmujący stroną 1; każdy tablet stuka tylko
-w swojej kolejce, a ruch wysyła drugiemu tabletowi.
+0 - gra przez sieć z innym tabletem. Połączenie sieciowe (link): "ha" - przez Home Assistant
+(moduł net), "direct" - bezpośrednio między tabletami, bez HA (moduł direct, przycisk
+"Internet"). W grze sieciowej zapraszający gra stroną 0 (białe, krzyżyk), przyjmujący
+stroną 1; każdy tablet stuka tylko w swojej kolejce, a ruch wysyła drugiemu tabletowi.
 """
 from kivy.app import App
 from kivy.clock import Clock
@@ -15,8 +16,10 @@ from kivy.properties import BooleanProperty, NumericProperty, StringProperty
 from kivy.uix.widget import Widget
 
 AI_DELAY = 0.8          # s - komputer "myśli", żeby dziecko zobaczyło swój ruch
+END_DELAY = 0.7         # s - okno końca gry po chwili, żeby było widać ostatni ruch
 GAMES = {}              # nazwa gry -> widżet planszy (dla komunikatów z sieci)
 NETWORK = 0
+LINKS = ("ha", "direct")
 
 
 class BoardWidget(Widget):
@@ -26,13 +29,18 @@ class BoardWidget(Widget):
     SIDE_NAMES = ("białe", "czarne")
     status = StringProperty("")
     players = NumericProperty(2)        # 1 - z komputerem, 2 - dwóch graczy, 0 - przez sieć
+    link = StringProperty("ha")         # gra sieciowa: "ha" albo "direct" (bez HA)
     my_side = NumericProperty(0)        # gra sieciowa: którą stroną gra ten tablet
     net_ready = BooleanProperty(False)  # gra sieciowa: drugi tablet przyjął zaproszenie
     peer = StringProperty("")           # gra sieciowa: nazwa tabletu przeciwnika
+    DOT = False                         # kolor strony jako kółko obok napisu (szachy, warcaby)
+    dot = NumericProperty(-1)           # strona do kółka przy napisie, -1 - bez kółka
+    _dot_next = -1
 
     def __init__(self, **kwargs):
         self._ai_event = None
         self._joining = False
+        self._used = None               # połączenie bieżącej partii sieciowej
         super().__init__(**kwargs)
         if self.GAME:
             GAMES[self.GAME] = self
@@ -89,6 +97,18 @@ class BoardWidget(Widget):
         if self.players == NETWORK:
             self.invite()
 
+    def set_mode(self, players: int, link: str = "ha"):
+        """Przycisk trybu: komputer, dwóch graczy, sieć przez HA albo bezpośrednio."""
+        if players == self.players and (players != NETWORK or link == self.link):
+            return
+        self._joining = True
+        self.link, self.players = link, players
+        self._joining = False
+        self.leave_network()
+        self.new_game()
+        if players == NETWORK:
+            self.invite()
+
     def restart(self):
         """Przycisk "Nowa gra": w grze sieciowej nowe zaproszenie."""
         self.leave_network()
@@ -112,29 +132,46 @@ class BoardWidget(Widget):
         if self.computer_turn() and not self.finished:
             self._ai_event = Clock.schedule_once(lambda _dt: self.ai_move(), AI_DELAY)
 
+    def _color(self, side: int) -> str:
+        """Kolor strony w napisie: słowo w nawiasie albo (gry z DOT) kółko obok napisu."""
+        if self.DOT:
+            self._dot_next = side
+            return ""
+        return f" ({self.SIDE_NAMES[side]})"
+
+    def on_status(self, *_):
+        """Kółko koloru tylko przy napisach o kolejce i zwycięzcy (turn_text, winner_text)."""
+        self.dot, self._dot_next = self._dot_next, -1
+
     def turn_text(self, side: int) -> str:
         """Napis o kolejce dla danej strony, zależnie od trybu gry."""
-        color = self.SIDE_NAMES[side]
         if self.players == NETWORK:
             if not self.net_ready:
-                return "Czekam, aż drugi tablet przyjmie zaproszenie…"
-            return f"Twój ruch ({color})" if side == self.my_side else f"Ruch: {self.peer} ({color})"
+                return ("Czekam na drugi tablet (bez HA)…" if self.link == "direct"
+                        else "Czekam, aż drugi tablet przyjmie zaproszenie…")
+            color = self._color(side)
+            return f"Twój ruch{color}" if side == self.my_side else f"Ruch: {self.peer}{color}"
+        color = self._color(side)
         if self.players == 1:
-            return f"Twój ruch ({color})" if side == 0 else f"Ruch komputera ({color})"
-        return f"Ruch: Gracz {side + 1} ({color})"
+            return f"Twój ruch{color}" if side == 0 else f"Ruch komputera{color}"
+        return f"Ruch: Gracz {side + 1}{color}"
 
     def winner_text(self, side: int) -> str:
         if self.players == NETWORK:
             return "Wygrywasz! Brawo!" if side == self.my_side else f"Wygrywa {self.peer}"
         if self.players == 1:
             return "Wygrywasz! Brawo!" if side == 0 else "Wygrywa komputer"
-        return f"Wygrywa Gracz {side + 1} ({self.SIDE_NAMES[side]})"
-
+        return f"Wygrywa Gracz {side + 1}{self._color(side)}"
+    def game_over(self, winner):
+        """Koniec partii: po chwili okno z wynikiem (moduł endgame); winner - strona
+        zwycięzcy albo None przy remisie."""
+        from dzieci.games import endgame
+        Clock.schedule_once(lambda _dt: endgame.show(self, winner), END_DELAY)
     # --- gra przez sieć -------------------------------------------------------------------
-    @staticmethod
-    def net():
+    def net(self):
+        """Połączenie bieżącego trybu: przez HA (app.net) albo bezpośrednie (app.direct)."""
         app = App.get_running_app()
-        return getattr(app, "net", None)
+        return getattr(app, "direct" if self.link == "direct" else "net", None)
 
     def invite(self):
         net = self.net()
@@ -142,15 +179,18 @@ class BoardWidget(Widget):
         if net is None:
             self.status = "Gra przez sieć wymaga połączenia z Home Assistant"
             return
+        self._used = net
         net.invite(self.GAME)
         self.refresh_status()
 
-    def join(self, peer: str):
+    def join(self, peer: str, link: str = "ha"):
         """Ten tablet przyjął zaproszenie: gra stroną 1."""
         self._joining = True
+        self.link = link
         self.players = NETWORK
         self._joining = False
         self.new_game()
+        self._used = self.net()
         self.my_side, self.peer, self.net_ready = 1, peer, True
         self.refresh_status()
 
@@ -160,9 +200,10 @@ class BoardWidget(Widget):
         self.refresh_status()
 
     def leave_network(self):
-        net = self.net()
+        net = self._used or self.net()
         if net is not None and net.session and getattr(net, "game", self.GAME) == self.GAME:
             net.leave(self.GAME)
+        self._used = None
         self.net_ready, self.peer = False, ""
 
     def peer_left(self, text: str):
@@ -172,7 +213,7 @@ class BoardWidget(Widget):
     def send(self, move):
         """Ruch tego tabletu w grze sieciowej idzie do drugiego tabletu."""
         if self.players == NETWORK:
-            net = self.net()
+            net = self._used or self.net()
             if net is not None:
                 net.send_move(self.GAME, move)
 

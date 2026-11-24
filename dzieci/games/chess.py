@@ -13,7 +13,7 @@ Gra przez sieć: ruch wysyłany jako [r0, c0, r1, c1].
 import random
 from pathlib import Path
 
-from kivy.graphics import Color, Ellipse, Line, Rectangle
+from kivy.graphics import Color, Ellipse, Line, Rectangle, RoundedRectangle
 from kivy.uix.label import Label
 
 from dzieci.games.board import BoardWidget
@@ -183,6 +183,7 @@ def legal_moves(state):
 class Chess(BoardWidget):
     SIZE = N
     GAME = "chess"
+    DOT = True                  # kolor strony jako kółko obok napisu
 
     def __init__(self, **kwargs):
         self.state = initial()
@@ -191,11 +192,13 @@ class Chess(BoardWidget):
         self.last = None
         self.finished = False
         self._labels = {}
+        self.taken, self._taken_labels = [], []     # zbite figury i ich napisy z boku
         super().__init__(**kwargs)
         self.new_game()
 
     def new_game(self, *_):
         self.state = initial()
+        self.taken = []
         self.last = None
         self.finished = False
         self._start_turn()
@@ -216,14 +219,20 @@ class Chess(BoardWidget):
             self.finished = True
             if in_check(self.state, self.state["turn"]):
                 self.status = "Szach mat! " + self.winner_text(1 - self.current_side())
+                self.game_over(1 - self.current_side())
             else:
                 self.status = "Pat - remis"
+                self.game_over(None)
         else:
             self.refresh_status()
         self.redraw()
         self.schedule_ai()
 
     def _play(self, move):
+        board = self.state["board"]
+        victim = board[move[0]][move[3]] if move[4] == "ep" else board[move[2]][move[3]]
+        if victim is not None:          # zbita figura - na listę z boku planszy
+            self.taken.append(victim)
         self.state = make_move(self.state, move)
         self.last = ((move[0], move[1]), (move[2], move[3]))
         self._start_turn()
@@ -311,3 +320,33 @@ class Chess(BoardWidget):
                         cx, cy = self.cell_center(m[2], m[3])
                         # zielona kropka: pole, na które może pójść wybrana figura
                         Ellipse(pos=(cx - c * 0.14, cy - c * 0.14), size=(c * 0.28, c * 0.28))
+        self._draw_taken()
+
+    def _draw_taken(self):
+        """Zbite figury z boku planszy: białe po lewej, czarne po prawej (od najcenniejszej)."""
+        for lbl in self._taken_labels:
+            self.remove_widget(lbl)
+        self._taken_labels = []
+        x0, y0 = self.origin
+        room = x0 - self.x - 12
+        if room < 30:
+            return
+        s = min(self.cell * 0.72, room / 2)
+        for color, left in (("w", self.x + 6), ("b", x0 + self.side + 6)):
+            pieces = sorted((p for p in self.taken if p[0] == color), key=lambda p: -VALUE[p[1]])
+            if pieces:                  # jasne tło jak plansza - czarne figury widoczne
+                rows = (len(pieces) + 1) // 2
+                with self.canvas.before:
+                    Color(*LIGHT)
+                    RoundedRectangle(pos=(left - 4, y0 + self.side - rows * s - 4),
+                                     size=(2 * s + 8, rows * s + 8), radius=[10])
+            for i, piece in enumerate(pieces):
+                white = color == "w"
+                lbl = Label(text=GLYPH[piece[1]], font_name=FONT, font_size=s * 0.8,
+                            color=(1, 1, 1, 1) if white else (0.10, 0.10, 0.12, 1),
+                            outline_width=max(1, int(s * 0.03)),
+                            outline_color=(0.10, 0.10, 0.12) if white else (0.85, 0.85, 0.85),
+                            size=(s, s),
+                            pos=(left + (i % 2) * s, y0 + self.side - (i // 2 + 1) * s))
+                self.add_widget(lbl)
+                self._taken_labels.append(lbl)

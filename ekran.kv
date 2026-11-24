@@ -12,26 +12,26 @@
     code: 0
     target: ""
     size_hint_y: None
-    height: 110
+    height: 84
     on_release: app.nav(self.target)
     canvas.before:
         Color:
             rgba: (1, 1, 1, 0.20) if self.state == "down" else (1, 1, 1, 0.07)
         RoundedRectangle:
-            pos: self.center_x - 44, self.center_y - 44
-            size: 88, 88
-            radius: [26]
+            pos: self.center_x - 40, self.center_y - 40
+            size: 80, 80
+            radius: [24]
     Label:
         text: chr(root.code) if root.code else icons.glyph(root.icon)
         font_name: icons.FONT_NAME
-        font_size: "52sp"
+        font_size: "46sp"
         color: WARM
         size_hint: None, None
         size: self.texture_size
 
 <RailText@Label>:
     size_hint_y: None
-    height: 80
+    height: 58
     bold: True
     color: TEXT
 
@@ -90,6 +90,15 @@ BoxLayout:
                     Caption:
                         text: season.caption
                     Widget:
+            # imię dziecka na dole pod zegarami (tablet.json, osobne na każdym tablecie)
+            Label:
+                text: app.child_name
+                font_size: "52sp"
+                bold: True
+                color: WARM
+                size_hint: 1, None
+                height: 90
+                pos_hint: {"x": 0, "y": 0.03}
         # gry - wspólne ekrany z dzieci/games/gry.kv
         GamesScreen:
         TicTacToeScreen:
@@ -108,14 +117,17 @@ BoxLayout:
         # kolorowanki - dzieci/coloring/kolorowanki.kv
         ColoringScreen:
         ColorPageScreen:
+        # aparat - dzieci/camera/aparat.kv
+        CameraScreen:
+        PhotosScreen:
 
     # Menu po prawej: dom, godzina, data, słuchawka, gry
     BoxLayout:
         orientation: "vertical"
         size_hint_x: None
         width: 128
-        padding: [0, 18]
-        spacing: 6
+        padding: [0, 12]
+        spacing: 4
         canvas.before:
             Color:
                 rgba: RAIL_BG
@@ -147,4 +159,12 @@ BoxLayout:
             # palette z Material Design Icons - kolorowanki
             code: 0xF03D8
             target: "coloring"
+        RailButton:
+            # camera z Material Design Icons - aparat (zdjęcia na kartę SD)
+            code: 0xF0100
+            target: "camera"
         Widget:
+        RailButton:
+            # exit-run z Material Design Icons - wyjście z aplikacji (3 razy „Tak”)
+            code: 0xF0425
+            target: "exit"

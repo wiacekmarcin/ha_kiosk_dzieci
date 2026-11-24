@@ -109,6 +109,7 @@ class PolishDots(BoardWidget):
         a, b = self.score
         self.status = (f"Remis!   {a} : {b}" if a == b else
                        f"{self.winner_text(0 if a > b else 1)}   {a} : {b}")
+        self.game_over(None if a == b else (0 if a > b else 1))
         self.redraw()
 
     # --- otaczanie ------------------------------------------------------------------

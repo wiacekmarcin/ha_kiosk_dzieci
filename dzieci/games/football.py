@@ -133,6 +133,7 @@ class Football(BoardWidget):
     def _finish(self, winner, why):
         self.finished = True
         self.status = f"{why} {self.winner_text(winner)}"
+        self.game_over(winner)
 
     def play(self, p):
         if self.finished or p not in self.legal():

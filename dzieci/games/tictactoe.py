@@ -76,9 +76,11 @@ class TicTacToe(BoardWidget):
         if mark is not None:
             self.win_line = line
             self.status = self.winner_text(mark)
+            self.game_over(mark)
             self._finish()
         elif all(c is not None for c in self.cells):
             self.status = "Remis!"
+            self.game_over(None)
             self._finish()
         else:
             self.player = 1 - self.player

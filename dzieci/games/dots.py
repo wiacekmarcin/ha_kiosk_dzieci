@@ -111,6 +111,7 @@ class Dots(BoardWidget):
         self.finished = True
         a, b = self.score(0), self.score(1)
         self.status = f"{self.winner_text(0 if a > b else 1)}   {a} : {b}"
+        self.game_over(0 if a > b else 1)
         if self.players != NETWORK:
             self._restart = Clock.schedule_once(self.new_game, RESTART_SECONDS)
 

@@ -10,6 +10,7 @@ from kivy.clock import Clock
 from kivy.core.window import Window
 from kivy.factory import Factory
 from kivy.graphics import Color, RoundedRectangle
+from kivy.logger import Logger
 from kivy.properties import StringProperty
 from kivy.uix.boxlayout import BoxLayout
 from kivy.uix.button import Button
@@ -18,6 +19,8 @@ from kivy.uix.modalview import ModalView
 
 from dzieci.games.board import GAMES, NETWORK
 from dzieci.games.net import GameNet
+from dzieci.games.direct import DirectNet
+from dzieci.games import endgame
 
 # kolejność gier jak w siatce gier - dla przycisków Poprzednia / Następna
 GAME_SCREENS = ("tictactoe", "checkers", "chess", "paint", "dice", "dots", "ships", "pdots",
@@ -93,38 +96,47 @@ class InvitePopup(ModalView):
 
 
 class GamesHost:
-    net = None
+    net = None                          # gra przez Home Assistant (GameNet)
+    direct = None                       # gra bezpośrednio między tabletami (DirectNet)
     _invite = None
 
     def setup_games(self, settings: dict, name: str):
-        """Wołać w build(): sieć gier, gdy jest adres i token HA; przycisk Wstecz."""
+        """Wołać w build(): sieć gier przez HA (gdy jest adres i token), gra bezpośrednia
+        (zawsze, także bez HA) i przyciski tabletu."""
         if settings.get("url") and settings.get("token"):
             self.net = GameNet(settings, name, self.on_game_event)
+        try:
+            self.direct = DirectNet(name, self.on_game_event)
+        except OSError as e:
+            Logger.warning(f"Gra bezpośrednia niedostępna: {e}")
         Window.bind(on_keyboard=self._games_key)
+
+    def transport(self, msg: dict):
+        """Połączenie, którym przyszedł komunikat."""
+        return self.direct if msg.get("_via") == "direct" else self.net
 
     # --- nawigacja ------------------------------------------------------------------------
     def leave_network_games(self, keep=None):
         """Wyjście z ekranu gry sieciowej kończy partię (drugi tablet dostaje komunikat)."""
+        endgame.close_all()             # okno końca gry nie zostaje na innym ekranie
         for key, board in GAMES.items():
-            active = board.net_ready or getattr(self.net, "game", None) == key
+            active = board.net_ready or any(getattr(t, "game", None) == key
+                                            for t in (self.net, self.direct) if t is not None)
             if key != keep and board.players == NETWORK and active:
                 board.leave_network()
                 board.status = "Gra przez sieć zakończona"
 
     def _games_key(self, _window, key, *_args):
-        """Przyciski tabletu (Wstecz, Menu): na ekranie startowym działają systemowo
-        (Kivy przenosi aplikację w tło jak każdą inną), w grach i oknach nic nie robią -
-        do cofania jest przycisk Wstecz u góry ekranu."""
-        if key not in HARDWARE_KEYS:
-            return False
-        on_main = self.root.ids.sm.current == "start" and not any(
-            isinstance(w, ModalView) for w in Window.children)
-        return not on_main
+        """Przyciski tabletu (Wstecz, Menu) są zablokowane wszędzie, także na ekranie
+        startowym - aplikacji nie da się nimi opuścić (tryb kiosku). Do cofania jest
+        przycisk Wstecz u góry ekranu, a do wyjścia przycisk na dole menu."""
+        return key in HARDWARE_KEYS
 
     # --- komunikaty z sieci -------------------------------------------------------------------
     def on_game_event(self, msg: dict):
         kind, board = msg.get("type"), GAMES.get(msg.get("game"))
-        if board is None or self.net is None:
+        net = self.transport(msg)
+        if board is None or net is None:
             return
         if kind == "invite":
             busy = any(b.players == NETWORK and b.net_ready for b in GAMES.values())
@@ -132,31 +144,32 @@ class GamesHost:
                 self._invite = InvitePopup(msg, self._answer_invite)
                 self._invite.open()
             return
-        if not self.net.mine(msg):
+        if not net.mine(msg):
             return
         sender = msg.get("from", "Drugi tablet")
         if kind == "accept" and board.players == NETWORK:
-            self.net.peer = sender
+            net.peer = sender
             board.accepted(sender)
         elif kind == "decline":
-            self.net.session = None
+            net.session = None
             board.peer_left(f"{sender} nie chce teraz grać")
         elif kind == "move":
             board.remote_move(msg.get("move") or [])
         elif kind == "leave":
-            self.net.session = None
+            net.session = None
             board.peer_left(f"{sender} zakończył grę")
 
     def _answer_invite(self, msg, ok, silent):
         self._invite = None
+        net = self.transport(msg)
         if not ok:
             if not silent:
-                self.net.decline(msg)
+                net.decline(msg)
             return
         board = GAMES.get(msg.get("game"))
         if board is None:
             return
         self.leave_network_games()
-        self.net.accept(msg)
+        net.accept(msg)
         self.nav(msg["game"])
-        board.join(msg.get("from", "Drugi tablet"))
+        board.join(msg.get("from", "Drugi tablet"), "direct" if net is self.direct else "ha")

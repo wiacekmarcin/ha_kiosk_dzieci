@@ -1,11 +1,14 @@
-"""Statki - tylko przez sieć, z drugim tabletem. Po lewej moja flota, po prawej morze
-przeciwnika, w które się strzela. Flota jak w klasycznych statkach: jeden czteromasztowiec,
-dwa trójmasztowce, trzy dwumasztowce i cztery jednomasztowce, statki nie stykają się
-nawet rogami. Ustawienie jest losowe; przycisk "Losuj flotę" zmienia je do pierwszego
-strzału. Trafienie - strzelasz dalej, pudło - kolej przeciwnika. Wygrywa ten, kto pierwszy
-zatopi całą flotę.
+"""Statki: z komputerem albo przez sieć z drugim tabletem (przez Home Assistant albo
+bezpośrednio, bez HA). Po lewej moja flota, po prawej morze przeciwnika, w które się
+strzela. Flota jak w klasycznych statkach: jeden czteromasztowiec, dwa trójmasztowce, trzy
+dwumasztowce i cztery jednomasztowce, statki nie stykają się nawet rogami. Ustawienie jest
+losowe; przycisk "Losuj flotę" zmienia je do pierwszego strzału. Trafienie - strzelasz dalej,
+pudło - kolej przeciwnika. Wygrywa ten, kto pierwszy zatopi całą flotę.
 
-Zaczyna tablet, który zaprosił. Komunikaty (ruch w sieci):
+Z komputerem: komputer ma własną losową flotę; strzela losowo, a po trafieniu (poziom łatwy)
+zwykle szuka dalej wokół trafionego pola.
+
+Przez sieć zaczyna tablet, który zaprosił. Komunikaty (ruch w sieci):
     [0, r, c]                 - strzał w pole (r, c)
     [1, r, c, wynik, *pola]   - odpowiedź: 0 pudło, 1 trafiony, 2 zatopiony, 3 zatopiona
                                 cała flota; przy zatopieniu pola statku (r1, c1, r2, c2...)
@@ -23,6 +26,7 @@ N = 10
 FLEET = (4, 3, 3, 2, 2, 2, 1, 1, 1, 1)
 SHOT, REPLY = 0, 1
 MISS, HIT, SUNK, ALL_SUNK = 0, 1, 2, 3
+HUNT_CHANCE = 0.75                      # komputer szuka wokół trafienia z takim prawd.
 GAP = 0.06                              # odstęp między planszami (ułamek szerokości)
 WATER = (0.80, 0.90, 0.98, 1)
 GRID = (0.45, 0.60, 0.78, 1)
@@ -54,6 +58,19 @@ def random_fleet():
             return ships
 
 
+def judge(ships, hits, r, c):
+    """Strzał w flotę ships (hits - ostrzelane pola): (wynik, pola zatopionego statku)."""
+    ship = next((s for s in ships if (r, c) in s), None)
+    hits[(r, c)] = ship is not None
+    if ship is None:
+        return MISS, []
+    if all(hits.get(p) for p in ship):
+        if all(hits.get(p) for s in ships for p in s):
+            return ALL_SUNK, ship
+        return SUNK, ship
+    return HIT, []
+
+
 class Battleship(BoardWidget):
     SIZE = N
     GAME = "ships"
@@ -64,18 +81,20 @@ class Battleship(BoardWidget):
         self.ships = random_fleet()
         self.incoming = {}              # moje pola ostrzelane: (r, c) -> trafiony?
         self.outgoing = {}              # pola przeciwnika: (r, c) -> MISS / HIT / SUNK
+        self.enemy_ships, self.enemy_hits = [], {}  # flota komputera
         self.turn = 0
         self.waiting = False            # czekam na odpowiedź na swój strzał
         self.finished = False
         super().__init__(**kwargs)
-        self._joining = True            # tylko sieć - bez zaproszenia przy starcie
-        self.players = NETWORK
+        self._joining = True
+        self.players = 1                # domyślnie z komputerem
         self._joining = False
         self.new_game()
 
     # --- partia ---------------------------------------------------------------------
     def new_game(self, *_):
         self.ships = random_fleet()
+        self.enemy_ships, self.enemy_hits = random_fleet(), {}
         self.incoming, self.outgoing = {}, {}
         self.turn, self.waiting, self.finished, self.started = 0, False, False, False
         self.refresh_status()
@@ -93,7 +112,9 @@ class Battleship(BoardWidget):
         Clock.schedule_once(lambda _dt: self.enter(), 0.3)
 
     def enter(self):
-        """Nowe zaproszenie, chyba że partia już trwa albo czeka na odpowiedź."""
+        """Gra sieciowa: nowe zaproszenie, chyba że partia już trwa albo czeka."""
+        if self.players != NETWORK:
+            return
         net = self.net()
         if not self.net_ready and not (net is not None and net.session):
             self.restart()
@@ -105,12 +126,15 @@ class Battleship(BoardWidget):
         return super().human_turn() and not self.waiting and not self.finished
 
     def computer_turn(self):
-        return False
+        return self.players == 1 and self.turn == 1 and not self.finished
 
     def refresh_status(self):
         if self.finished:
             return
-        if self.players == NETWORK and self.net_ready:
+        if self.players == 1:
+            self.status = "Twój strzał - stuknij w pole po prawej" if self.turn == 0 \
+                else "Strzela komputer…"
+        elif self.players == NETWORK and self.net_ready:
             if self.turn == self.my_side:
                 self.status = "Czekam na wynik strzału…" if self.waiting else \
                     "Twój strzał - stuknij w pole po prawej"
@@ -123,7 +147,14 @@ class Battleship(BoardWidget):
     def tap(self, row, col):
         if (row, col) in self.outgoing or self.finished or self.waiting:
             return
-        self.started, self.waiting = True, True
+        self.started = True
+        if self.players == 1:           # z komputerem - wynik od razu
+            result, ship = judge(self.enemy_ships, self.enemy_hits, row, col)
+            self.waiting = True
+            self._reply_received(row, col, result, [v for p in ship for v in p])
+            self.schedule_ai()
+            return
+        self.waiting = True
         self.send([SHOT, row, col])
         self.refresh_status()
 
@@ -148,29 +179,43 @@ class Battleship(BoardWidget):
         if result == ALL_SUNK:
             self.finished = True
             self.status = "Wygrywasz! Cała flota zatopiona. Brawo!"
+            self.game_over(self.my_side if self.players == NETWORK else 0)
         self.refresh_status()
         self.redraw()
 
-    # --- strzał przeciwnika -----------------------------------------------------------
+    # --- strzał przeciwnika (drugi tablet albo komputer) ---------------------------------
     def _shot_received(self, r, c):
         self.started = True
-        ship = next((s for s in self.ships if (r, c) in s), None)
-        self.incoming[(r, c)] = ship is not None
-        reply = [REPLY, r, c, MISS]
-        if ship is None:
+        result, ship = judge(self.ships, self.incoming, r, c)
+        if result == MISS:
             self.turn = 1 - self.turn
-        elif all(self.incoming.get(p) for p in ship):
-            sunk_all = all(self.incoming.get(p) for s in self.ships for p in s)
-            reply = [REPLY, r, c, ALL_SUNK if sunk_all else SUNK] + [v for p in ship for v in p]
-            if sunk_all:
-                self.finished = True
-                self.status = f"Wygrywa {self.peer} - zatopił całą flotę"
-        else:
-            reply[3] = HIT
-        self.send(reply)
+        elif result == ALL_SUNK:
+            self.finished = True
+            self.status = "Wygrywa komputer - zatopił całą flotę" if self.players == 1 \
+                else f"Wygrywa {self.peer} - zatopił całą flotę"
+            self.game_over(1 - self.my_side if self.players == NETWORK else 1)
+        self.send([REPLY, r, c, result] + [v for p in ship for v in p])
         self.refresh_status()
         self.redraw()
 
+    def ai_move(self):
+        """Strzał komputera: wokół trafionego (jeszcze nie zatopionego) statku albo losowo,
+        omijając pola przy zatopionych statkach."""
+        self._ai_event = None
+        if not self.computer_turn():
+            return
+        sunk = {p for s in self.ships if all(self.incoming.get(q) for q in s) for p in s}
+        near_sunk = {(a + dr, b + dc) for a, b in sunk for dr in (-1, 0, 1) for dc in (-1, 0, 1)}
+        free = [(r, c) for r in range(N) for c in range(N) if (r, c) not in self.incoming]
+        hits = [p for p, hit in self.incoming.items() if hit and p not in sunk]
+        targets = [(a + dr, b + dc) for a, b in hits for dr, dc in ((1, 0), (-1, 0), (0, 1), (0, -1))
+                   if 0 <= a + dr < N and 0 <= b + dc < N and (a + dr, b + dc) not in self.incoming]
+        if targets and random.random() < HUNT_CHANCE:
+            shot = random.choice(targets)
+        else:
+            shot = random.choice([p for p in free if p not in near_sunk] or free)
+        self._shot_received(*shot)
+        self.schedule_ai()              # trafienie - komputer strzela dalej
     # --- geometria: dwie plansze obok siebie ---------------------------------------------
     @property
     def side(self):
@@ -206,7 +251,8 @@ class Battleship(BoardWidget):
                 for i in range(1, N):
                     Line(points=[x0 + i * k, y0, x0 + i * k, y0 + self.side], width=1)
                     Line(points=[x0, y0 + i * k, x0 + self.side, y0 + i * k], width=1)
-                title = f"Morze: {self.peer or 'przeciwnik'}" if enemy else "Moja flota"
+                rival = "komputer" if self.players == 1 else (self.peer or "przeciwnik")
+                title = f"Morze: {rival}" if enemy else "Moja flota"
                 tex = CoreLabel(text=title, font_size=26, bold=True)
                 tex.refresh()
                 Color(*LABEL)

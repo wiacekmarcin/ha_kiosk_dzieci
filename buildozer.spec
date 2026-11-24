@@ -2,7 +2,7 @@
 title = Kiosk dzieci
 package.name = hakioskdzieci
 package.domain = pl.mieszkanie
-version = 0.15
+version = 0.27
 source.dir = .
 source.include_exts = py,png,kv,ttf,json,ogg
 source.exclude_dirs = tools, bin, .buildozer, __pycache__, .venv, venv
@@ -12,7 +12,13 @@ source.exclude_patterns = buildozer.spec, sync_kiosk.sh, README.md
 requirements = python3,kivy==2.3.1,requests,urllib3,certifi,charset-normalizer,idna,openssl
 orientation = landscape
 fullscreen = 1
-android.permissions = INTERNET, ACCESS_NETWORK_STATE, RECORD_AUDIO, WAKE_LOCK
+android.permissions = INTERNET, ACCESS_NETWORK_STATE, RECORD_AUDIO, WAKE_LOCK, ACCESS_WIFI_STATE, CHANGE_WIFI_MULTICAST_STATE, CAMERA
+# tryb kiosku jako właściciel urządzenia (dzieci/kiosklock.py): odbiornik administratora
+# urządzenia. Szablon manifestu python-for-android nie ma miejsca na <receiver>, więc
+# element wchodzi przez wpis uses-library (dwie opcjonalne biblioteki "kiosk.*" na brzegach).
+android.add_src = android_src
+android.add_resources = android_res/device_admin.xml:xml/device_admin.xml
+android.uses_library = kiosk.admin.start" android:required="false" /><receiver android:name="pl.mieszkanie.hakioskdzieci.AdminReceiver" android:permission="android.permission.BIND_DEVICE_ADMIN" android:exported="true"><meta-data android:name="android.app.device_admin" android:resource="@xml/device_admin" /><intent-filter><action android:name="android.app.action.DEVICE_ADMIN_ENABLED" /></intent-filter></receiver><uses-library android:required="false" android:name="kiosk.admin.end
 android.api = 33
 android.minapi = 21
 android.ndk_api = 21

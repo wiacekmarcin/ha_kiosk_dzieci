@@ -97,14 +97,16 @@
         text_size: self.size
         shorten: True
 
-# Wybór trybu: 1 gracz (z komputerem), 2 graczy (jeden tablet), sieć (inny tablet)
+# Wybór trybu: 1 gracz (z komputerem), 2 graczy (jeden tablet), sieć przez Home Assistant
+# (link "ha") albo bezpośrednio między tabletami, bez HA (link "direct", ikona globusa)
 <ModeButton@ButtonBehavior+AnchorLayout>:
     game: None
     players: 1
-    active: False       # ustawiane przy użyciu: active: <gra>.players == <tryb>
+    link: "ha"
+    active: False       # ustawiane przy użyciu: active: <gra>.players == <tryb> ...
     size_hint: None, None
-    size: 96, 64
-    on_release: if self.game: self.game.players = self.players
+    size: 80, 64
+    on_release: if self.game: self.game.set_mode(self.players, self.link)
     canvas.before:
         Color:
             rgba: GRY_WARM if self.active else GRY_TILE
@@ -113,11 +115,45 @@
             size: self.size
             radius: [32]
     Label:
-        text: chr(MODE_GLYPH[root.players])
+        text: chr(0xF059F if root.link == "direct" else MODE_GLYPH[root.players])
         font_name: icons.FONT_NAME
         font_size: "40sp"
         color: (0.10, 0.10, 0.12, 1) if root.active else GRY_TEXT
 
+# Napis pod planszą z kółkiem koloru strony zamiast słowa "białe"/"czarne" (szachy, warcaby):
+# białe albo czarne kółko z delikatną białą obwódką; board.dot - strona (-1 bez kółka)
+<DotStatus@AnchorLayout>:
+    board: None
+    size_hint_y: None
+    height: 70
+    BoxLayout:
+        size_hint_x: None
+        width: lbl.width + dot.width + self.spacing
+        spacing: 14
+        Label:
+            id: lbl
+            text: root.board.status if root.board else ""
+            font_size: "32sp"
+            bold: True
+            color: GRY_TEXT
+            size_hint_x: None
+            width: self.texture_size[0]
+        Widget:
+            id: dot
+            size_hint_x: None
+            width: 40 if (root.board and root.board.dot >= 0) else 0
+            opacity: 1 if (root.board and root.board.dot >= 0) else 0
+            canvas:
+                Color:
+                    rgba: 1, 1, 1, 0.9
+                Ellipse:
+                    pos: self.center_x - 19, self.center_y - 19
+                    size: 38, 38
+                Color:
+                    rgba: (0.97, 0.96, 0.92, 1) if (root.board and root.board.dot == 0) else (0.12, 0.12, 0.14, 1)
+                Ellipse:
+                    pos: self.center_x - 16, self.center_y - 16
+                    size: 32, 32
 # Napis pod planszą: czyj ruch, kto wygrał
 <GameStatus@Label>:
     font_size: "32sp"
@@ -206,7 +242,7 @@
                 target: "dots"
             GameTile:
                 image: "gra_statki.png"
-                title: "Statki (sieć)"
+                title: "Statki"
                 target: "ships"
             GameTile:
                 image: "gra_pkropki.png"
@@ -238,7 +274,12 @@
             ModeButton:
                 game: ttt
                 players: 0
-                active: ttt.players == 0
+                active: ttt.players == 0 and ttt.link == "ha"
+            ModeButton:
+                game: ttt
+                players: 0
+                link: "direct"
+                active: ttt.players == 0 and ttt.link == "direct"
             BarButton:
                 text: "Nowa gra"
                 on_release: ttt.restart()
@@ -264,14 +305,19 @@
             ModeButton:
                 game: checkers
                 players: 0
-                active: checkers.players == 0
+                active: checkers.players == 0 and checkers.link == "ha"
+            ModeButton:
+                game: checkers
+                players: 0
+                link: "direct"
+                active: checkers.players == 0 and checkers.link == "direct"
             BarButton:
                 text: "Nowa gra"
                 on_release: checkers.restart()
         Checkers:
             id: checkers
-        GameStatus:
-            text: checkers.status
+        DotStatus:
+            board: checkers
 
 <ChessScreen@Screen>:
     name: "chess"
@@ -290,14 +336,19 @@
             ModeButton:
                 game: chess
                 players: 0
-                active: chess.players == 0
+                active: chess.players == 0 and chess.link == "ha"
+            ModeButton:
+                game: chess
+                players: 0
+                link: "direct"
+                active: chess.players == 0 and chess.link == "direct"
             BarButton:
                 text: "Nowa gra"
                 on_release: chess.restart()
         Chess:
             id: chess
-        GameStatus:
-            text: chess.status
+        DotStatus:
+            board: chess
 
 <DiceScreen@Screen>:
     name: "dice"
@@ -406,7 +457,12 @@
             ModeButton:
                 game: dots
                 players: 0
-                active: dots.players == 0
+                active: dots.players == 0 and dots.link == "ha"
+            ModeButton:
+                game: dots
+                players: 0
+                link: "direct"
+                active: dots.players == 0 and dots.link == "direct"
             BarButton:
                 text: "Nowa gra"
                 on_release: dots.restart()
@@ -423,13 +479,28 @@
         orientation: "vertical"
         GameBar:
             title: "Statki"
+            ModeButton:
+                game: ships
+                players: 1
+                active: ships.players == 1
+            ModeButton:
+                game: ships
+                players: 0
+                active: ships.players == 0 and ships.link == "ha"
+            ModeButton:
+                game: ships
+                players: 0
+                link: "direct"
+                active: ships.players == 0 and ships.link == "direct"
             BarButton:
                 text: "Losuj flotę"
+                size: 160, 64
                 disabled: ships.started
                 opacity: 0.4 if ships.started else 1
                 on_release: ships.shuffle()
             BarButton:
                 text: "Nowa gra"
+                size: 150, 64
                 on_release: ships.restart()
         Battleship:
             id: ships
@@ -476,7 +547,12 @@
             ModeButton:
                 game: pdots
                 players: 0
-                active: pdots.players == 0
+                active: pdots.players == 0 and pdots.link == "ha"
+            ModeButton:
+                game: pdots
+                players: 0
+                link: "direct"
+                active: pdots.players == 0 and pdots.link == "direct"
             BarButton:
                 text: "Zakończ"
                 size: 150, 64
@@ -596,7 +672,12 @@
             ModeButton:
                 game: football
                 players: 0
-                active: football.players == 0
+                active: football.players == 0 and football.link == "ha"
+            ModeButton:
+                game: football
+                players: 0
+                link: "direct"
+                active: football.players == 0 and football.link == "direct"
             BarButton:
                 text: "Nowa gra"
                 size: 170, 64

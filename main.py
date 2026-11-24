@@ -8,6 +8,8 @@ budowaniem przez sync_kiosk.sh).
 
 Ustawienia: settings.json (url, token HA, tablet_name) wbudowany w APK; nowszy plik
 można wgrać bez przebudowy do /sdcard/Android/data/pl.mieszkanie.hakioskdzieci/files/.
+Ten sam APK idzie na oba tablety dzieci; różnią się tylko plikiem tablet.json w tym samym
+katalogu (install.sh): child - imię pod zegarami, tablet_name - nazwa tabletu w sieci.
 Podgląd na PC: DZIECI_SCREENSHOT=ekran.png python main.py (zrzut ekranu i koniec).
 """
 import json
@@ -50,6 +52,8 @@ from dzieci.games import chess, checkers, dice, dots, football, paint, pdots, sh
 from dzieci.games.host import GamesHost  # noqa: E402
 from dzieci.music import MusicPlayer  # noqa: E402
 from dzieci import coloring  # noqa: E402,F401 - klasy kolorowanek dla kolorowanki.kv
+from dzieci import camera  # noqa: E402 - aparat (klasy dla aparat.kv, pauza i wznowienie)
+from dzieci import kiosklock  # noqa: E402
 from kivy.uix.screenmanager import NoTransition  # noqa: E402
 from kiosk import icons, voice  # noqa: E402
 from kiosk.widgets.voice_dialog import VoiceDialog  # noqa: E402
@@ -58,18 +62,32 @@ HERE = Path(__file__).resolve().parent
 KV_DIR = HERE / "kiosk" / "kv"
 
 
+FILES_DIR = Path("/sdcard/Android/data/pl.mieszkanie.hakioskdzieci/files")
+
+
+def _read_json(path: Path):
+    try:
+        return json.loads(path.read_text(encoding="utf-8"))
+    except (OSError, ValueError):
+        return None
+
+
 def load_settings() -> dict:
-    """settings.json z katalogu plików aplikacji (adb push) albo wbudowany w APK."""
-    candidates = []
-    if IS_ANDROID:
-        candidates.append(Path("/sdcard/Android/data/pl.mieszkanie.hakioskdzieci/files/settings.json"))
-    candidates.append(HERE / "settings.json")
-    for path in candidates:
-        try:
-            return json.loads(path.read_text(encoding="utf-8"))
-        except (OSError, ValueError):
-            continue
-    return {}
+    """settings.json z katalogu plików aplikacji (adb push) albo wbudowany w APK, a na nim
+    tablet.json z katalogu plików aplikacji - ustawienia jednego tabletu (child, tablet_name),
+    wgrywane przez install.sh. Na PC tablet.json obok main.py (podgląd)."""
+    settings = {}
+    for path in ([FILES_DIR / "settings.json"] if IS_ANDROID else []) + [HERE / "settings.json"]:
+        data = _read_json(path)
+        if isinstance(data, dict):
+            settings = data
+            break
+    tablet = _read_json((FILES_DIR if IS_ANDROID else HERE) / "tablet.json")
+    if isinstance(tablet, dict):
+        if tablet.get("child") and not tablet.get("tablet_name"):
+            settings.pop("tablet_name", None)       # nazwa w sieci z imienia, nie wspólna
+        settings.update(tablet)
+    return settings
 
 
 class DzieciApp(GamesHost, App):
@@ -79,6 +97,7 @@ class DzieciApp(GamesHost, App):
     date_text = StringProperty("")
     voice_last = StringProperty("")
     tablet_name = StringProperty("Tablet dzieci")
+    child_name = StringProperty("")     # imię dziecka pod zegarami (tablet.json)
 
     def build(self):
         Window.clearcolor = (0.10, 0.12, 0.19, 1)
@@ -92,8 +111,12 @@ class DzieciApp(GamesHost, App):
         self.announcer = DayAnnouncer(self.voice_player)
         self.music = MusicPlayer(self.voice_player)    # ekran Muzyka
         settings = load_settings()
+        # tablet.json (install.sh): imię dziecka pod zegarami i nazwa tabletu w sieci -
+        # oba tablety dzieci mają ten sam APK, a w sieci muszą mieć różne nazwy
+        self.child_name = settings.get("child", "")
+        self.tablet_name = settings.get("tablet_name") or (
+            f"Tablet {self.child_name}" if self.child_name else self.tablet_name)
         if settings.get("url") and settings.get("token") and not os.environ.get("DZIECI_SCREENSHOT"):
-            self.tablet_name = settings.get("tablet_name", self.tablet_name)
             self.voice = voice.VoiceLink(settings, self.tablet_name, voice.cache_dir(),
                                          self._on_message)
             self.voice.start()
@@ -106,6 +129,7 @@ class DzieciApp(GamesHost, App):
         Builder.load_file(str(HERE / "dzieci" / "games" / "gry.kv"))
         Builder.load_file(str(HERE / "dzieci" / "music" / "muzyka.kv"))
         Builder.load_file(str(HERE / "dzieci" / "coloring" / "kolorowanki.kv"))
+        Builder.load_file(str(HERE / "dzieci" / "camera" / "aparat.kv"))
         # ekran.kv celowo nie nazywa się dzieci.kv - Kivy wczytałby go sam przed build()
         return Builder.load_file(str(HERE / "ekran.kv"))
 
@@ -113,13 +137,20 @@ class DzieciApp(GamesHost, App):
         shot = os.environ.get("DZIECI_SCREENSHOT")
         if shot:
             Clock.schedule_once(lambda _dt: self._screenshot(shot), 2.5)
+        else:
+            kiosklock.lock()            # tryb kiosku: Home i lista aplikacji nie wyprowadzają
 
     def _screenshot(self, path):
         Window.screenshot(name=path)
         self.stop()
 
     def on_pause(self):
+        camera.on_app_pause()           # wygaszony ekran: kamera zwolniona
         return True                     # wygaszony ekran nie zamyka aplikacji
+
+    def on_resume(self):
+        kiosklock.relock_later()        # po powrocie do aplikacji przypięcie wraca
+        camera.on_app_resume()          # aparat wraca, jeśli był otwarty
 
     def _update_clock(self, _dt):
         now = clocks.now()
@@ -130,6 +161,9 @@ class DzieciApp(GamesHost, App):
     def nav(self, target: str):
         """Menu i przyciski: home - ekran startowy, voice - wiadomość głosowa,
         games - siatka gier, inna nazwa - ekran gry (tictactoe, checkers, chess, paint)."""
+        if target == "exit":            # wyjście z aplikacji (okno, 3 razy „Tak”)
+            kiosklock.ask_exit()
+            return
         if target == "voice":
             VoiceDialog().open()
             return
