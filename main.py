@@ -49,6 +49,7 @@ from dzieci.announce import DayAnnouncer  # noqa: E402
 from dzieci.games import chess, checkers, dice, dots, football, paint, pdots, ships, snake, tetris, tictactoe  # noqa: E402,F401 - klasy gier dla gry.kv
 from dzieci.games.host import GamesHost  # noqa: E402
 from dzieci.music import MusicPlayer  # noqa: E402
+from dzieci import coloring  # noqa: E402,F401 - klasy kolorowanek dla kolorowanki.kv
 from kivy.uix.screenmanager import NoTransition  # noqa: E402
 from kiosk import icons, voice  # noqa: E402
 from kiosk.widgets.voice_dialog import VoiceDialog  # noqa: E402
@@ -104,6 +105,7 @@ class DzieciApp(GamesHost, App):
         Clock.schedule_interval(self._update_clock, 1)
         Builder.load_file(str(HERE / "dzieci" / "games" / "gry.kv"))
         Builder.load_file(str(HERE / "dzieci" / "music" / "muzyka.kv"))
+        Builder.load_file(str(HERE / "dzieci" / "coloring" / "kolorowanki.kv"))
         # ekran.kv celowo nie nazywa się dzieci.kv - Kivy wczytałby go sam przed build()
         return Builder.load_file(str(HERE / "ekran.kv"))
 

@@ -1,0 +1,209 @@
+#:import icons kiosk.icons
+#:import coloring dzieci.coloring
+# Kolorowanki (klasy w dzieci/coloring/__init__.py). Wczytywane po dzieci/games/gry.kv
+# (CloseButton, BarButton, NavButton); aplikacja ma nav("coloring") i nav("colorpage").
+
+#:set KOL_WARM (1.0, 0.84, 0.40, 1)
+#:set KOL_TEXT (0.95, 0.95, 0.98, 1)
+#:set KOL_TILE (0.20, 0.24, 0.36, 1)
+#:set KOL_TILE_DOWN (0.30, 0.36, 0.52, 1)
+# Material Design Icons: undo
+#:set KOL_UNDO 0xF054C
+
+<PageTile>:
+    orientation: "vertical"
+    size_hint_y: None
+    height: 270
+    padding: 12
+    spacing: 6
+    canvas.before:
+        Color:
+            rgba: KOL_TILE_DOWN if self.state == "down" else KOL_TILE
+        RoundedRectangle:
+            pos: self.pos
+            size: self.size
+            radius: [22]
+    Image:
+        source: root.image
+        fit_mode: "contain"
+    Label:
+        text: root.title
+        font_size: "22sp"
+        bold: True
+        color: KOL_TEXT
+        size_hint_y: None
+        height: 36
+        text_size: self.width, None
+        halign: "center"
+        shorten: True
+
+<PageList>:
+    cols: 4
+    spacing: 20
+    padding: [24, 10, 24, 24]
+    size_hint_y: None
+    height: self.minimum_height
+
+<ColorSwatch>:
+    size_hint: None, None
+    size: 78, 78
+    canvas:
+        Color:
+            rgba: KOL_WARM if (self.target and list(self.target.color) == list(self.rgba)) else (0, 0, 0, 0)
+        Ellipse:
+            pos: self.pos
+            size: self.size
+        Color:
+            rgba: 0.06, 0.07, 0.12, 1
+        Ellipse:
+            pos: self.x + 5, self.y + 5
+            size: self.width - 10, self.height - 10
+        Color:
+            rgba: self.rgba
+        Ellipse:
+            pos: self.x + 8, self.y + 8
+            size: self.width - 16, self.height - 16
+
+# Przycisk motywu (zaznaczony - żółty)
+<ThemeButton@ButtonBehavior+Label>:
+    theme: ""
+    active: False
+    size_hint: None, None
+    size: 170, 64
+    font_size: "24sp"
+    bold: True
+    color: (0.10, 0.10, 0.12, 1) if self.active else KOL_TEXT
+    canvas.before:
+        Color:
+            rgba: KOL_WARM if self.active else (KOL_TILE_DOWN if self.state == "down" else KOL_TILE)
+        RoundedRectangle:
+            pos: self.pos
+            size: self.size
+            radius: [32]
+
+<ColoringScreen@Screen>:
+    name: "coloring"
+    on_enter: page_list.refresh()
+    BoxLayout:
+        orientation: "vertical"
+        BoxLayout:
+            size_hint_y: None
+            height: 84
+            padding: [16, 10]
+            spacing: 12
+            CloseButton:
+                on_release: app.nav("home")
+            Label:
+                text: "Kolorowanki"
+                font_size: "32sp"
+                bold: True
+                color: KOL_WARM
+            ThemeButton:
+                text: "Pokemon"
+                active: page_list.theme == "pokemon"
+                on_release: page_list.theme = "pokemon"
+            ThemeButton:
+                text: "Minecraft"
+                active: page_list.theme == "minecraft"
+                on_release: page_list.theme = "minecraft"
+            ThemeButton:
+                text: "Spidey"
+                active: page_list.theme == "spidey"
+                on_release: page_list.theme = "spidey"
+            ThemeButton:
+                text: "Moje"
+                size: 120, 64
+                active: page_list.theme == "inne"
+                on_release: page_list.theme = "inne"
+        ScrollView:
+            do_scroll_x: False
+            bar_width: 10
+            PageList:
+                id: page_list
+
+<ColorPageScreen@Screen>:
+    name: "colorpage"
+    BoxLayout:
+        orientation: "vertical"
+        BoxLayout:
+            size_hint_y: None
+            height: 84
+            padding: [16, 10]
+            spacing: 12
+            CloseButton:
+                on_release: app.nav("coloring")
+            Label:
+                text: kol.title
+                font_size: "30sp"
+                bold: True
+                color: KOL_WARM
+                text_size: self.size
+                halign: "center"
+                valign: "middle"
+                shorten: True
+            BarButton:
+                text: "Cofnij"
+                size: 150, 64
+                on_release: kol.undo()
+            BarButton:
+                text: "Wyczyść"
+                size: 150, 64
+                on_release: kol.clear()
+            NavButton:
+                code: 0xF0141
+                on_release: kol.step(-1)
+            NavButton:
+                code: 0xF0142
+                on_release: kol.step(1)
+        BoxLayout:
+            padding: [10, 6, 10, 10]
+            spacing: 10
+            ColoringCanvas:
+                id: kol
+            GridLayout:
+                cols: 2
+                spacing: 8
+                size_hint_x: None
+                width: 172
+                ColorSwatch:
+                    rgba: coloring.COLORS[0]
+                    target: kol
+                ColorSwatch:
+                    rgba: coloring.COLORS[1]
+                    target: kol
+                ColorSwatch:
+                    rgba: coloring.COLORS[2]
+                    target: kol
+                ColorSwatch:
+                    rgba: coloring.COLORS[3]
+                    target: kol
+                ColorSwatch:
+                    rgba: coloring.COLORS[4]
+                    target: kol
+                ColorSwatch:
+                    rgba: coloring.COLORS[5]
+                    target: kol
+                ColorSwatch:
+                    rgba: coloring.COLORS[6]
+                    target: kol
+                ColorSwatch:
+                    rgba: coloring.COLORS[7]
+                    target: kol
+                ColorSwatch:
+                    rgba: coloring.COLORS[8]
+                    target: kol
+                ColorSwatch:
+                    rgba: coloring.COLORS[9]
+                    target: kol
+                ColorSwatch:
+                    rgba: coloring.COLORS[10]
+                    target: kol
+                ColorSwatch:
+                    rgba: coloring.COLORS[11]
+                    target: kol
+                ColorSwatch:
+                    rgba: coloring.COLORS[12]
+                    target: kol
+                ColorSwatch:
+                    rgba: coloring.COLORS[13]
+                    target: kol
