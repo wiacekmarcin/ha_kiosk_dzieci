@@ -123,9 +123,12 @@ BoxLayout:
 
     # Menu po prawej: dom, godzina, data, słuchawka, gry
     BoxLayout:
+        id: rail
         orientation: "vertical"
         size_hint_x: None
-        width: 128
+        width: 128 if app.section == "home" else 0
+        opacity: 1 if app.section == "home" else 0
+        disabled: app.section != "home"
         padding: [0, 8]
         spacing: 4
         canvas.before:

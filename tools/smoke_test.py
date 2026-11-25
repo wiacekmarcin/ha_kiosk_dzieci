@@ -172,7 +172,13 @@ class Smoke(main.DzieciApp):
             lambda: self._update_battery(0),
             lambda: check(self.battery_text == "74%", "poziom baterii nie został pokazany"),
             lambda: setattr(main.device, "battery", self.original_battery),
+            lambda: check(sm.current == "start" and self.root.ids.rail.opacity == 1
+                          and self.root.ids.rail.width == 128,
+                          "pasek boczny nie jest widoczny na ekranie głównym"),
             lambda: self.nav("games"),
+            lambda: check(self.root.ids.rail.opacity == 0 and self.root.ids.rail.width == 0
+                          and self.root.ids.rail.disabled,
+                          "pasek boczny nadal jest widoczny poza ekranem głównym"),
         ]
         for game in ("tictactoe", "checkers", "chess"):
             steps.append(lambda g=game: self.nav(g))
@@ -331,6 +337,9 @@ class Smoke(main.DzieciApp):
                           "Wstecz w grze nie powinno nic robić"),
             lambda: check(self._games_key(None, 319) is True, "Menu w grze nie powinno nic robić"),
             lambda: self.nav("home"),
+            lambda: check(self.root.ids.rail.opacity == 1 and self.root.ids.rail.width == 128
+                          and not self.root.ids.rail.disabled,
+                          "pasek boczny nie wrócił na ekran główny"),
             lambda: check(self._games_key(None, 27) is True,
                           "Wstecz na ekranie startowym też ma być zablokowane (kiosk)"),
             # wyjście: okno potwierdzenia, po 2 razy "Tak" jeszcze otwarte (trzeba 3 razy)
