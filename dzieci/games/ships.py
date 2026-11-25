@@ -136,10 +136,10 @@ class Battleship(BoardWidget):
                 else "Strzela komputer…"
         elif self.players == NETWORK and self.net_ready:
             if self.turn == self.my_side:
-                self.status = "Czekam na wynik strzału…" if self.waiting else \
-                    "Twój strzał - stuknij w pole po prawej"
+                self.status = "Czekam na ruch przeciwnika:" if self.waiting else \
+                    "Czekam na Twój ruch"
             else:
-                self.status = f"Strzela {self.peer}"
+                self.status = "Czekam na ruch przeciwnika:"
         else:
             self.status = self.turn_text(self.turn)
 

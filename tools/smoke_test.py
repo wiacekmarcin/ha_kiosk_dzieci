@@ -51,13 +51,71 @@ class FakeNet(GameNet):
     """GameNet bez HA: komunikaty trafiają do listy sent."""
     def __init__(self, name):                   # noqa: D107 - bez wątku i bez HA
         self.name, self.session, self.peer, self.seq, self.sent = name, None, None, 0, []
+        self.center, self._session_via = None, None
 
-    def _post(self, payload):
+    def _post(self, payload, via=None):
         self.sent.append(payload)
+
+
+class FakeDirect(FakeNet):
+    def accept(self, invite):
+        self.session, self.peer, self.game = invite["session"], invite["from"], invite["game"]
+        self.sent.append({"type": "accept", "session": self.session})
+        return True
 
 
 def msg(**kw):
     return {"from": PEER, "time": datetime.now(timezone.utc).isoformat(), **kw}
+
+
+def test_game_net_pinned_channel():
+    from threading import Event, Lock
+    from unittest.mock import patch
+
+    class Center:
+        connected = True
+
+        def __init__(self):
+            self.sent = []
+
+        def send(self, payload):
+            self.sent.append(payload)
+            return True
+
+    class Response:
+        @staticmethod
+        def raise_for_status():
+            pass
+
+    center = Center()
+    net = GameNet.__new__(GameNet)
+    net.center, net.name, net.base, net.headers = center, "Tablet 2", "http://ha", {}
+    net.on_event = lambda _msg: None
+    net.session = net.peer = net.game = net._session_via = None
+    net.seq, net._seen, net._lock = 0, None, Lock()
+    sent = []
+    complete = Event()
+
+    def post(_url, **kwargs):
+        sent.append(kwargs["json"]["attributes"]["type"])
+        if len(sent) == 2:
+            complete.set()
+        return Response()
+
+    with patch("dzieci.games.net.requests.post", side_effect=post):
+        net.accept({"session": "s1", "from": "Tablet 1", "game": "chess", "_via": "ha"})
+        net.ready_ack("chess")
+        complete.wait(2)
+
+    check(complete.is_set() and sent == ["accept", "ready_ack"] and not center.sent,
+          "odpowiedź na zaproszenie HA została wysłana innym kanałem")
+
+    incoming = []
+    net.on_event = incoming.append
+    net._center_event({"from": "Tablet 1", "msg": {"type": "invite", "game": "chess",
+                                                    "session": "s2"}}, None)
+    check(incoming and incoming[0].get("_via") == "center",
+          "zaproszenie centrum nie oznaczyło kanału odpowiedzi")
 
 
 def dots(canvas):
@@ -107,7 +165,15 @@ class Smoke(main.DzieciApp):
         sm = self.root.ids.sm
         self.net = FakeNet(self.tablet_name)
         self.peer, self.peer_events = None, []      # drugi tablet w grze bezpośredniej
-        steps = [lambda: self.nav("games")]
+        self.original_battery = main.device.battery
+        steps = [
+            test_game_net_pinned_channel,
+            lambda: setattr(main.device, "battery", lambda: {"level": 74}),
+            lambda: self._update_battery(0),
+            lambda: check(self.battery_text == "74%", "poziom baterii nie został pokazany"),
+            lambda: setattr(main.device, "battery", self.original_battery),
+            lambda: self.nav("games"),
+        ]
         for game in ("tictactoe", "checkers", "chess"):
             steps.append(lambda g=game: self.nav(g))
             for players in ((2,) if game == "tictactoe" else (2, 1)):
@@ -119,51 +185,108 @@ class Smoke(main.DzieciApp):
             steps.append(lambda g=game: GAMES[g].restart())
         steps += [
             # zielone kropki: pion e2 ma 2 pola (e3, e4), pionek warcabów z (5, 0) - 1 pole
-            lambda: setattr(GAMES["chess"], "players", 2),
+            lambda: GAMES["chess"].set_mode(1),
             lambda: [GAMES["chess"].new_game(), GAMES["chess"].tap(6, 4)],
             lambda: check(dots(GAMES["chess"].canvas.after) == 2,
-                          f"szachy: kropek {dots(GAMES['chess'].canvas.after)} zamiast 2"),
-            lambda: setattr(GAMES["checkers"], "players", 2),
+                          f"szachy: podpowiedzi dla jednego gracza {dots(GAMES['chess'].canvas.after)}"),
+            lambda: GAMES["chess"].set_mode(NETWORK, "ha"),
+            lambda: setattr(GAMES["chess"], "net_ready", True),
+            lambda: [GAMES["chess"].new_game(), GAMES["chess"].tap(6, 4)],
+            lambda: check(dots(GAMES["chess"].canvas.after) == 0,
+                          "szachy pokazują podpowiedzi w grze sieciowej"),
+            lambda: GAMES["checkers"].set_mode(1),
             lambda: [GAMES["checkers"].new_game(), GAMES["checkers"].tap(5, 0)],
-            lambda: check(dots(GAMES["checkers"].canvas) >= 1, "warcaby: brak kropek"),
-            # sieć: drugi tablet zaprasza do szachów, ten tablet przyjmuje i gra czarnymi
-            lambda: self.on_game_event(msg(type="invite", game="chess", session="s1")),
+            lambda: check(dots(GAMES["checkers"].canvas) >= 1,
+                          "warcaby: brak podpowiedzi dla jednego gracza"),
+            lambda: GAMES["checkers"].set_mode(NETWORK, "ha"),
+            lambda: setattr(GAMES["checkers"], "net_ready", True),
+            lambda: [GAMES["checkers"].new_game(), GAMES["checkers"].tap(5, 0)],
+            lambda: check(dots(GAMES["checkers"].canvas) == 0,
+                          "warcaby pokazują podpowiedzi w grze sieciowej"),
+            # wybór strony w szachach poprzedza wysłanie zaproszenia i oczekiwanie
+            lambda: self.nav("chess"),
+            lambda: self.activate_game_mode(GAMES["chess"], NETWORK, "ha", True),
+            lambda: check(self._side_popup is not None and self._waiting_popup is None
+                          and self.net.session is None,
+                          "szachy rozpoczęły oczekiwanie przed wyborem strony"),
+            lambda: self._side_popup.select(1),
+            lambda: check(self._waiting_popup is not None
+                          and self.net.sent[-1].get("side") == 1,
+                          "wybór czarnych nie rozpoczął oczekiwania z właściwą stroną"),
+            # inicjator może przerwać oczekiwanie i wrócić do trybu lokalnego
+            lambda: self._waiting_popup.cancel(),
+            lambda: check(GAMES["chess"].players == 1 and self.net.session is None,
+                          "Przerwij nie wróciło do gry lokalnej"),
+            # sieć: drugi tablet wybiera czarne w szachach, ten tablet gra białymi
+            lambda: self.on_game_event(msg(type="invite", game="chess", session="s1", side=1)),
             lambda: check(self._invite is not None, "brak okna zaproszenia"),
             lambda: self._invite.answer(True),
-            lambda: check(sm.current == "chess" and GAMES["chess"].players == NETWORK
-                          and GAMES["chess"].my_side == 1 and GAMES["chess"].net_ready,
-                          "przyjęcie zaproszenia nie otworzyło szachów sieciowych"),
+            lambda: check(sm.current == "chess" and GAMES["chess"].players == 1
+                          and self._join_pending is not None,
+                          "przyjęcie nie rozpoczęło sprawdzania połączenia"),
             lambda: check(self.net.sent[-1]["type"] == "accept", "brak odpowiedzi accept"),
-            lambda: GAMES["chess"].tap(1, 4),          # nie moja kolej - nic się nie dzieje
-            lambda: self.on_game_event(msg(type="move", game="chess", session="s1",
-                                           to=self.tablet_name, move=[6, 4, 4, 4])),
-            lambda: check(GAMES["chess"].current_side() == 1, "ruch z sieci nie został wykonany"),
-            lambda: [GAMES["chess"].tap(1, 4), GAMES["chess"].tap(3, 4)],
-            lambda: check(self.net.sent[-1].get("move") == [1, 4, 3, 4],
+            lambda: self._join_timed_out(0, self._join_pending),
+            lambda: check(GAMES["chess"].players == 1 and self.net.session is None
+                          and "Gra lokalna" in GAMES["chess"].status,
+                          "brak połączenia nie wrócił do trybu lokalnego"),
+            lambda: self.on_game_event(msg(type="invite", game="chess", session="s2", side=1)),
+            lambda: self._invite.answer(True),
+            lambda: self.on_game_event(msg(type="ready", game="chess", session="s2",
+                                           to=self.tablet_name)),
+            lambda: check(sm.current == "chess" and GAMES["chess"].players == NETWORK
+                          and GAMES["chess"].my_side == 0 and GAMES["chess"].net_ready
+                          and GAMES["chess"].human_turn()
+                          and GAMES["chess"].status.startswith("Czekam na Twój ruch"),
+                          "potwierdzenie nie uruchomiło szachów sieciowych"),
+            lambda: [GAMES["chess"].tap(6, 4), GAMES["chess"].tap(4, 4)],
+            lambda: check(self.net.sent[-1].get("move") == [6, 4, 4, 4],
+                          "biały ruch po akceptacji nie został wysłany"),
+            lambda: self.on_game_event(msg(type="move", game="chess", session="s2",
+                                           to=self.tablet_name, move=[1, 4, 3, 4])),
+            lambda: check(GAMES["chess"].current_side() == 0
+                          and GAMES["chess"].human_turn(),
+                          "ruch czarnych z sieci nie został wykonany"),
+            lambda: [GAMES["chess"].tap(7, 6), GAMES["chess"].tap(5, 5)],
+            lambda: check(self.net.sent[-1].get("move") == [7, 6, 5, 5],
                           f"ruch nie poszedł do sieci: {self.net.sent[-1]}"),
-            lambda: self.on_game_event(msg(type="leave", game="chess", session="s1",
+            lambda: self.on_game_event(msg(type="leave", game="chess", session="s2",
                                            to=self.tablet_name)),
             lambda: check("zakończył" in GAMES["chess"].status, "brak napisu o wyjściu"),
             # sieć: ten tablet zaprasza do warcabów, drugi przyjmuje
             lambda: self.nav("checkers"),
-            lambda: setattr(GAMES["checkers"], "players", NETWORK),
+            lambda: self.activate_game_mode(GAMES["checkers"], NETWORK, "ha", False, 1),
+            lambda: check(GAMES["checkers"].status == "Oczekiwanie na gracza"
+                          and self.net.sent[-1].get("side") == 1
+                          and self._waiting_popup is not None,
+                          "zaproszenie do warcabów nie pokazuje oczekiwania albo wybranej strony"),
             lambda: check(self.net.sent[-1]["type"] == "invite", "brak zaproszenia"),
             lambda: self.on_game_event(msg(type="accept", game="checkers", to=self.tablet_name,
                                            session=self.net.session)),
-            lambda: check(GAMES["checkers"].net_ready and GAMES["checkers"].my_side == 0,
-                          "przyjęcie nie rozpoczęło warcabów"),
-            lambda: [GAMES["checkers"].tap(5, 0), GAMES["checkers"].tap(4, 1)],
-            lambda: check(self.net.sent[-1].get("move") == [5, 0, 4, 1],
-                          f"ruch warcabów nie poszedł: {self.net.sent[-1]}"),
+            lambda: check(self._waiting_popup is not None and self.net.sent[-1]["type"] == "ready"
+                          and not GAMES["checkers"].net_ready,
+                          "inicjator zamknął oczekiwanie przed potwierdzeniem"),
+            lambda: self.on_game_event(msg(type="ready_ack", game="checkers",
+                                           to=self.tablet_name, session=self.net.session)),
+            lambda: check(self._waiting_popup is None and GAMES["checkers"].net_ready
+                          and GAMES["checkers"].my_side == 1
+                          and not GAMES["checkers"].human_turn()
+                          and GAMES["checkers"].status.startswith("Czekam na ruch przeciwnika:"),
+                          "akceptacja nie odblokowała stanu warcabów albo strony"),
             lambda: self.on_game_event(msg(type="move", game="checkers", session=self.net.session,
-                                           to=self.tablet_name, move=[2, 1, 3, 0])),
-            lambda: check(GAMES["checkers"].current_side() == 0, "ruch rywala nie wykonany"),
+                                           to=self.tablet_name, move=[5, 0, 4, 1])),
+            lambda: check(GAMES["checkers"].current_side() == 1
+                          and GAMES["checkers"].human_turn(), "ruch białych nie przekazał tury"),
+            lambda: [GAMES["checkers"].tap(2, 1), GAMES["checkers"].tap(3, 0)],
+            lambda: check(self.net.sent[-1].get("move") == [2, 1, 3, 0],
+                          f"ruch wybraną stroną nie poszedł: {self.net.sent[-1]}"),
             # sieć: kółko i krzyżyk
             lambda: self.nav("tictactoe"),
             lambda: check(self.net.sent[-1]["type"] == "leave", "wyjście z warcabów bez leave"),
             lambda: setattr(GAMES["tictactoe"], "players", NETWORK),
             lambda: self.on_game_event(msg(type="accept", game="tictactoe", to=self.tablet_name,
                                            session=self.net.session)),
+            lambda: self.on_game_event(msg(type="ready_ack", game="tictactoe",
+                                           to=self.tablet_name, session=self.net.session)),
             lambda: GAMES["tictactoe"].tap(1, 1),
             lambda: check(self.net.sent[-1].get("move") == [4], "ruch kółka nie poszedł"),
             lambda: self.on_game_event(msg(type="move", game="tictactoe", session=self.net.session,
@@ -183,6 +306,24 @@ class Smoke(main.DzieciApp):
                           and self.exit_popup in main.Window.children,
                           f"wyjście: okno po 2 razy Tak ({self.exit_popup.info.text})"),
             lambda: self.exit_popup.dismiss(),
+            # Internet: wykryty serwer jest przyjmowany automatycznie, bez okna zaproszenia
+            lambda: setattr(self, "real_direct", self.direct),
+            lambda: setattr(self, "direct", FakeDirect(self.tablet_name)),
+            lambda: self.on_game_event(msg(type="invite", game="tictactoe", session="auto",
+                                           _via="direct")),
+            lambda: check(self._invite is None and self._join_pending is not None
+                          and GAMES["tictactoe"].players == 2
+                          and self.direct.sent[-1]["type"] == "accept",
+                          "Internet nie zaakceptował automatycznie wykrytego serwera"),
+            lambda: self.on_game_event(msg(type="ready", game="tictactoe", session="auto",
+                                           to=self.tablet_name, _via="direct")),
+            lambda: check(GAMES["tictactoe"].players == NETWORK
+                          and GAMES["tictactoe"].link == "direct"
+                          and GAMES["tictactoe"].net_ready
+                          and self.direct.sent[-1]["type"] == "ready_ack",
+                          "Internet nie uruchomił gry po potwierdzeniu połączenia"),
+            lambda: self.nav("home"),
+            lambda: setattr(self, "direct", self.real_direct),
             # kropki: z komputerem i we dwóch, potem przez sieć (ruch to cała lista kresek)
             lambda: self.nav("dots"),
             lambda: setattr(GAMES["dots"], "players", 2),
@@ -195,6 +336,8 @@ class Smoke(main.DzieciApp):
             lambda: setattr(GAMES["dots"], "players", NETWORK),
             lambda: self.on_game_event(msg(type="accept", game="dots", to=self.tablet_name,
                                            session=self.net.session)),
+            lambda: self.on_game_event(msg(type="ready_ack", game="dots",
+                                           to=self.tablet_name, session=self.net.session)),
             lambda: GAMES["dots"].play(0),
             lambda: check(self.net.sent[-1].get("move") == [0], f"kropki: {self.net.sent[-1]}"),
             lambda: self.on_game_event(msg(type="move", game="dots", session=self.net.session,
@@ -208,10 +351,16 @@ class Smoke(main.DzieciApp):
                           f"statki: brak zaproszenia {self.net.sent[-1]}"),
             lambda: self.on_game_event(msg(type="accept", game="ships", to=self.tablet_name,
                                            session=self.net.session)),
+            lambda: self.on_game_event(msg(type="ready_ack", game="ships",
+                                           to=self.tablet_name, session=self.net.session)),
+            lambda: check(GAMES["ships"].status == "Czekam na Twój ruch",
+                          "statki: brak informacji o własnej turze"),
             lambda: GAMES["ships"].shuffle(),
             lambda: GAMES["ships"].tap(0, 0),
             lambda: check(self.net.sent[-1].get("move") == [0, 0, 0] and GAMES["ships"].waiting,
                           f"statki: strzał nie poszedł {self.net.sent[-1]}"),
+            lambda: check(GAMES["ships"].status == "Czekam na ruch przeciwnika:",
+                          "statki: brak informacji o oczekiwaniu na przeciwnika"),
             lambda: GAMES["ships"].tap(5, 5),         # czekam na wynik - drugi strzał nic nie robi
             lambda: check(self.net.sent[-1].get("move") == [0, 0, 0], "statki: dwa strzały naraz"),
             lambda: self.on_game_event(msg(type="move", game="ships", session=self.net.session,
@@ -244,6 +393,10 @@ class Smoke(main.DzieciApp):
                                       "game": "tictactoe", "_addr": "127.0.0.1",
                                       "port": self.direct._server.getsockname()[1]}),
             None, None, None, None, None, None, None, None, None, None,
+            lambda: check(any(m.get("type") == "ready" for m in self.peer_events),
+                          f"bezpośrednio: brak potwierdzenia serwera {self.peer_events}"),
+            lambda: self.peer.ready_ack("tictactoe"),
+            None, None, None, None, None, None, None, None, None, None,
             lambda: check(GAMES["tictactoe"].net_ready and GAMES["tictactoe"].link == "direct",
                           "bezpośrednio: drugi tablet nie dołączył"),
             lambda: GAMES["tictactoe"].tap(1, 1),
@@ -275,6 +428,8 @@ class Smoke(main.DzieciApp):
             lambda: setattr(GAMES["pdots"], "players", NETWORK),
             lambda: self.on_game_event(msg(type="accept", game="pdots", to=self.tablet_name,
                                            session=self.net.session)),
+            lambda: self.on_game_event(msg(type="ready_ack", game="pdots",
+                                           to=self.tablet_name, session=self.net.session)),
             lambda: GAMES["pdots"].tap(2, 2),
             lambda: check(self.net.sent[-1].get("move") == [28], f"polskie kropki: {self.net.sent[-1]}"),
             lambda: self.on_game_event(msg(type="move", game="pdots", session=self.net.session,
@@ -313,12 +468,19 @@ class Smoke(main.DzieciApp):
             lambda: check(GAMES["football"].current_side() == 0 and len(GAMES["football"].moves) == 3,
                           "piłkarzyki: brak odbicia"),
             lambda: setattr(GAMES["football"], "players", 1),
+            lambda: check(dots(GAMES["football"].canvas) > 1,
+                          "piłkarzyki: brak podpowiedzi dla jednego gracza"),
             *[lambda: GAMES["football"].play(random.choice(GAMES["football"].legal() or [(0, 0)]))
               for _ in range(30)],
             None, None, None, None, None, None, None, None, None, None, None, None, None, None, None,
             lambda: setattr(GAMES["football"], "players", NETWORK),
             lambda: self.on_game_event(msg(type="accept", game="football", to=self.tablet_name,
                                            session=self.net.session)),
+            lambda: self.on_game_event(msg(type="ready_ack", game="football",
+                                           to=self.tablet_name, session=self.net.session)),
+            lambda: [GAMES["football"].redraw(),
+                     check(dots(GAMES["football"].canvas) <= 2,
+                           "piłkarzyki pokazują podpowiedzi w grze sieciowej")],
             lambda: GAMES["football"].tap(4, 4),
             lambda: check(self.net.sent[-1].get("move") == [5 * 9 + 4],
                           f"piłkarzyki: {self.net.sent[-1]}"),

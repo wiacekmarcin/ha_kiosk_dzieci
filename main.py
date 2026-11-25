@@ -55,7 +55,7 @@ from dzieci import coloring  # noqa: E402,F401 - klasy kolorowanek dla kolorowan
 from dzieci import camera  # noqa: E402 - aparat (klasy dla aparat.kv, pauza i wznowienie)
 from dzieci import kiosklock  # noqa: E402
 from kivy.uix.screenmanager import NoTransition  # noqa: E402
-from kiosk import icons, voice  # noqa: E402
+from kiosk import device, icons, voice  # noqa: E402
 from kiosk.widgets.voice_dialog import VoiceDialog  # noqa: E402
 
 HERE = Path(__file__).resolve().parent
@@ -98,10 +98,15 @@ class DzieciApp(GamesHost, App):
     voice_last = StringProperty("")
     tablet_name = StringProperty("Tablet dzieci")
     child_name = StringProperty("")     # imię dziecka pod zegarami (tablet.json)
+    app_version = StringProperty("")
+    battery_text = StringProperty("")
 
     def build(self):
         Window.clearcolor = (0.10, 0.12, 0.19, 1)
         icons.register_font()
+        self.app_version = device.app_version()
+        self._update_battery(0)
+        Clock.schedule_interval(self._update_battery, 60)
         for name in ("widgets.kv", "settings.kv", "voice_dialog.kv"):
             Builder.load_file(str(KV_DIR / name))
         self.voice = None
@@ -151,11 +156,17 @@ class DzieciApp(GamesHost, App):
     def on_resume(self):
         kiosklock.relock_later()        # po powrocie do aplikacji przypięcie wraca
         camera.on_app_resume()          # aparat wraca, jeśli był otwarty
+        self._update_battery(0)
 
     def _update_clock(self, _dt):
         now = clocks.now()
         self.time_text = now.strftime("%H:%M")
         self.date_text = f"{now.day}-{now.month}"
+
+    def _update_battery(self, _dt):
+        info = device.battery()
+        level = info.get("level") if info else None
+        self.battery_text = f"{level}%" if isinstance(level, int) else ""
 
     # --- menu -------------------------------------------------------------------------
     def nav(self, target: str):

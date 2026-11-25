@@ -245,7 +245,7 @@ class Checkers(BoardWidget):
                 for col in range(N):
                     Color(*(DARK if (r + col) % 2 else LIGHT))
                     Rectangle(pos=self.cell_pos(r, col), size=(c, c))
-            if self.step == 0 and not self.finished:      # pionki, którymi można ruszyć
+            if self.show_hints and self.step == 0 and not self.finished:
                 Color(*MOVABLE)
                 for start in {m["path"][0] for m in self.moves}:
                     x, y = self.cell_pos(*start)
@@ -262,10 +262,12 @@ class Checkers(BoardWidget):
                 Color(*SELECT)
                 x, y = self.cell_pos(*here)
                 Line(rectangle=(x + 3, y + 3, c - 6, c - 6), width=3)
-                Color(*TARGET)                      # zielone kropki: dozwolone pola
-                for target in {m["path"][self.step + 1] for m in self.candidates}:
-                    cx, cy = self.cell_center(*target)
-                    Ellipse(pos=(cx - c * 0.15, cy - c * 0.15), size=(c * 0.3, c * 0.3))
+                if self.show_hints:
+                    Color(*TARGET)
+                    for target in {m["path"][self.step + 1] for m in self.candidates}:
+                        cx, cy = self.cell_center(*target)
+                        Ellipse(pos=(cx - c * 0.15, cy - c * 0.15),
+                                size=(c * 0.3, c * 0.3))
         self._draw_taken()
 
     def _draw_taken(self):

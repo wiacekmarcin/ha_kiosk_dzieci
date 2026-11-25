@@ -104,9 +104,10 @@
     players: 1
     link: "ha"
     active: False       # ustawiane przy użyciu: active: <gra>.players == <tryb> ...
+    choose_side: False
     size_hint: None, None
     size: 80, 64
-    on_release: if self.game: self.game.set_mode(self.players, self.link)
+    on_release: if self.game: app.activate_game_mode(self.game, self.players, self.link, self.choose_side)
     canvas.before:
         Color:
             rgba: GRY_WARM if self.active else GRY_TILE
@@ -305,11 +306,13 @@
             ModeButton:
                 game: checkers
                 players: 0
+                choose_side: True
                 active: checkers.players == 0 and checkers.link == "ha"
             ModeButton:
                 game: checkers
                 players: 0
                 link: "direct"
+                choose_side: True
                 active: checkers.players == 0 and checkers.link == "direct"
             BarButton:
                 text: "Nowa gra"
@@ -336,11 +339,13 @@
             ModeButton:
                 game: chess
                 players: 0
+                choose_side: True
                 active: chess.players == 0 and chess.link == "ha"
             ModeButton:
                 game: chess
                 players: 0
                 link: "direct"
+                choose_side: True
                 active: chess.players == 0 and chess.link == "direct"
             BarButton:
                 text: "Nowa gra"

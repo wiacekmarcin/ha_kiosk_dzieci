@@ -312,7 +312,7 @@ class Chess(BoardWidget):
                 self.add_widget(lbl)
                 self._labels[(r, col)] = lbl
         self.canvas.after.clear()
-        if self.selected is not None:
+        if self.show_hints and self.selected is not None:
             with self.canvas.after:
                 Color(*TARGET)
                 for m in self.moves:

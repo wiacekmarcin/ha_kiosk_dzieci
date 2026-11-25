@@ -233,7 +233,7 @@ class Football(BoardWidget):
             for a, b, pl in self.moves:
                 Color(*COLORS[pl])
                 Line(points=[*self.pos_of(a), *self.pos_of(b)], width=max(k * 0.05, 1.5), cap="round")
-            if self.human_turn() and not self.finished:
+            if self.show_hints and self.human_turn() and not self.finished:
                 Color(*HINT)
                 d = k * 0.26
                 for p in self.legal():

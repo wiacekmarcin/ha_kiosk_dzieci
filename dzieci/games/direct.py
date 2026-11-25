@@ -81,7 +81,7 @@ class DirectNet:
             Logger.warning(f"Gra bezpośrednia: wysyłanie {payload.get('type')}: {e}")
             return False
 
-    def invite(self, game: str):
+    def invite(self, game: str, side: int = 0):
         """Ten tablet staje się serwerem i rozgłasza zaproszenie."""
         self._close()
         self.session, self.peer, self.game, self.seq = uuid.uuid4().hex[:8], None, game, 0
@@ -97,10 +97,10 @@ class DirectNet:
         threading.Thread(target=self._serve, args=(srv, self.session), daemon=True).start()
         self._announcing.set()
         msg = {"magic": MAGIC, "type": "invite", "game": game, "session": self.session,
-               "from": self.name, "port": port}
+               "from": self.name, "port": port, "side": side}
         threading.Thread(target=self._announce, args=(msg,), daemon=True).start()
 
-    def accept(self, msg: dict):
+    def accept(self, msg: dict) -> bool:
         """Przyjęcie zaproszenia: połączenie z serwerem drugiego tabletu."""
         self._close()
         self.session, self.peer, self.game, self.seq = msg["session"], msg["from"], msg["game"], 0
@@ -109,12 +109,25 @@ class DirectNet:
             conn.settimeout(None)
         except OSError as e:
             Logger.warning(f"Gra bezpośrednia: brak połączenia z {msg.get('_addr')}: {e}")
-            self._emit({"type": "leave", "game": msg["game"], "session": self.session,
-                        "from": self.peer, "to": self.name})
-            return
+            self.session = self.peer = self.game = None
+            return False
         self._conn = conn
         threading.Thread(target=self._read, args=(conn, self.session), daemon=True).start()
-        self._send({"type": "accept", "game": msg["game"], "session": self.session, "to": self.peer})
+        if not self._send({"type": "accept", "game": msg["game"], "session": self.session,
+                           "to": self.peer}):
+            self._close()
+            self.session = self.peer = self.game = None
+            return False
+        return True
+
+    def ready(self, game: str):
+        if self.session:
+            self._send({"type": "ready", "game": game, "session": self.session, "to": self.peer})
+
+    def ready_ack(self, game: str):
+        if self.session:
+            self._send({"type": "ready_ack", "game": game, "session": self.session,
+                        "to": self.peer})
 
     def decline(self, msg: dict):
         def work():

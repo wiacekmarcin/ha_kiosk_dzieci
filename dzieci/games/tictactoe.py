@@ -30,6 +30,7 @@ def winner(cells):
 class TicTacToe(BoardWidget):
     SIZE = 3
     GAME = "tictactoe"
+    SINGLE_PLAYER_MODE = 2
     SIDE_NAMES = ("krzyżyk", "kółko")
 
     def __init__(self, **kwargs):

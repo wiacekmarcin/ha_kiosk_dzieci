@@ -1,7 +1,7 @@
 """Gra przez sieć między tabletami - przez Home Assistant, jak wiadomości głosowe.
 
 Każdy komunikat to nowy stan encji ENTITY (unikalne id) z atrybutami:
-    type    - invite (zaproszenie do wszystkich), accept, decline, move, leave
+    type    - invite (zaproszenie do wszystkich), accept, ready, ready_ack, decline, move, leave
     game    - tictactoe, checkers albo chess
     session - id partii (nadaje zapraszający)
     from    - nazwa tabletu nadawcy, to - nazwa tabletu odbiorcy (poza invite)
@@ -38,6 +38,7 @@ class GameNet:
         self.on_event = on_event
         self.session = None             # id bieżącej partii sieciowej
         self.peer = None                # nazwa tabletu przeciwnika
+        self._session_via = None         # kanał zaproszenia: centrum albo HA
         self.seq = 0
         self._seen = None
         self._stop = threading.Event()
@@ -45,10 +46,18 @@ class GameNet:
         threading.Thread(target=self._run, name="ha-game", daemon=True).start()
 
     # --- wysyłanie ----------------------------------------------------------------------
-    def _post(self, payload: dict):
-        if self.center and self.center.connected:      # Kiosk Center - od razu do drugiego tabletu
-            self.center.send({"type": "game", "to": payload.get("to") or "*",
-                              "msg": {"from": self.name, **payload}})
+    def _post(self, payload: dict, via=None):
+        via = via or self._session_via
+        if via is None:
+            via = "center" if self.center and self.center.connected else "ha"
+        if via == "center":
+            if self.center and self.center.connected:
+                if self.center.send({"type": "game", "to": payload.get("to") or "*",
+                                     "msg": {"from": self.name, **payload}}):
+                    return
+                Logger.warning(f"Gra: centrum nie przyjęło komunikatu {payload.get('type')}")
+            else:
+                Logger.warning(f"Gra: brak połączenia z centrum dla {payload.get('type')}")
             return
         state = uuid.uuid4().hex[:12]
         self._seen = state              # własnego komunikatu nie przetwarzamy
@@ -65,20 +74,31 @@ class GameNet:
                     Logger.warning(f"Gra: błąd wysyłania {payload.get('type')}: {e}")
         threading.Thread(target=work, daemon=True).start()
 
-    def invite(self, game: str):
+    def invite(self, game: str, side: int = 0):
         self.session, self.peer, self.seq = uuid.uuid4().hex[:8], None, 0
+        self._session_via = "center" if self.center and self.center.connected else "ha"
         self.game = game                # gra bieżącej partii (leave tylko z jej planszy)
-        self._post({"type": "invite", "game": game, "session": self.session})
+        self._post({"type": "invite", "game": game, "session": self.session, "side": side})
 
     def accept(self, msg: dict):
         self.session, self.peer, self.seq = msg["session"], msg["from"], 0
+        self._session_via = msg.get("_via", "ha")
         self.game = msg["game"]
         self._post({"type": "accept", "game": msg["game"], "session": self.session,
                     "to": self.peer})
 
+    def ready(self, game: str):
+        if self.session:
+            self._post({"type": "ready", "game": game, "session": self.session, "to": self.peer})
+
+    def ready_ack(self, game: str):
+        if self.session:
+            self._post({"type": "ready_ack", "game": game, "session": self.session,
+                        "to": self.peer})
+
     def decline(self, msg: dict):
         self._post({"type": "decline", "game": msg.get("game"), "session": msg["session"],
-                    "to": msg["from"]})
+                    "to": msg["from"]}, via=msg.get("_via", "ha"))
 
     def send_move(self, game: str, move):
         if not self.session:
@@ -92,6 +112,7 @@ class GameNet:
             self._post({"type": "leave", "game": game, "session": self.session,
                         "to": self.peer})
         self.session = self.peer = self.game = None
+        self._session_via = None
 
     def mine(self, msg: dict) -> bool:
         """Komunikat dotyczy mojej bieżącej partii i jest do mnie."""
@@ -113,6 +134,7 @@ class GameNet:
         msg = dict(header.get("msg") or {})
         msg["from"] = header.get("from", msg.get("from"))
         if msg.get("type") and msg["from"] != self.name:
+            msg["_via"] = "center"
             self.on_event(msg)
 
     def _poll(self):
@@ -133,7 +155,9 @@ class GameNet:
                 return
         except ValueError:
             return
-        Clock.schedule_once(lambda _dt, a=dict(attrs): self.on_event(a))
+        incoming = dict(attrs)
+        incoming["_via"] = "ha"
+        Clock.schedule_once(lambda _dt, a=incoming: self.on_event(a))
 
     def stop(self):
         self._stop.set()

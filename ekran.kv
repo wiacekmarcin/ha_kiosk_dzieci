@@ -126,7 +126,7 @@ BoxLayout:
         orientation: "vertical"
         size_hint_x: None
         width: 128
-        padding: [0, 12]
+        padding: [0, 8]
         spacing: 4
         canvas.before:
             Color:
@@ -168,3 +168,21 @@ BoxLayout:
             # exit-run z Material Design Icons - wyjście z aplikacji (3 razy „Tak”)
             code: 0xF0425
             target: "exit"
+        Label:
+            text: ("v" + app.app_version) if app.app_version else ""
+            font_size: "13sp"
+            color: TEXT
+            size_hint_y: None
+            height: 16
+            text_size: self.size
+            halign: "center"
+            valign: "middle"
+        Label:
+            text: app.battery_text
+            font_size: "16sp"
+            color: WARM
+            size_hint_y: None
+            height: 20
+            text_size: self.size
+            halign: "center"
+            valign: "middle"
