@@ -7,12 +7,14 @@ polach, stuknięcie w pole z kropką przesuwa pionek (bez przeciągania palcem).
 Tryby (players): 2 - dwóch graczy na jednym tablecie, 1 - gra z komputerem (poziom łatwy),
 0 - gra przez sieć z innym tabletem. Połączenie sieciowe (link): "ha" - przez Home Assistant
 (moduł net), "direct" - bezpośrednio między tabletami, bez HA (moduł direct, przycisk
-"Internet"). W warcabach zapraszający wybiera stronę, a drugi tablet dostaje przeciwną;
-pozostałe gry zaczynają z domyślną stroną 0. Każdy tablet stuka tylko w swojej kolejce.
+"Internet"). W warcabach i szachach zapraszający wybiera stronę, a drugi tablet dostaje
+przeciwną. Każdy tablet stuka tylko w swojej kolejce.
 """
 from kivy.app import App
 from kivy.clock import Clock
-from kivy.properties import BooleanProperty, NumericProperty, StringProperty
+from kivy.properties import (BooleanProperty, NumericProperty, ObjectProperty,
+                             StringProperty)
+from kivy.uix.anchorlayout import AnchorLayout
 from kivy.uix.widget import Widget
 
 AI_DELAY = 0.8          # s - komputer "myśli", żeby dziecko zobaczyło swój ruch
@@ -20,6 +22,27 @@ END_DELAY = 0.7         # s - okno końca gry po chwili, żeby było widać osta
 GAMES = {}              # nazwa gry -> widżet planszy (dla komunikatów z sieci)
 NETWORK = 0
 LINKS = ("ha", "direct")
+
+
+class DotStatus(AnchorLayout):
+    board = ObjectProperty(None, allownone=True)
+    turn_text = StringProperty("")
+    color_text = StringProperty("")
+    show_color = BooleanProperty(False)
+    dot = NumericProperty(-1)
+
+    def on_board(self, *_):
+        if self.board:
+            self.board.bind(status=self._sync, players=self._sync, my_side=self._sync,
+                            dot=self._sync)
+            self._sync()
+
+    def _sync(self, *_):
+        if self.board:
+            self.turn_text = self.board.status
+            self.color_text = self.board.network_color_text
+            self.show_color = self.board.players == NETWORK and self.board.DOT
+            self.dot = self.board.dot
 
 
 class BoardWidget(Widget):
@@ -128,7 +151,16 @@ class BoardWidget(Widget):
 
     @property
     def show_hints(self) -> bool:
-        return self.players == 1
+        if self.players == 1:
+            return self.human_turn()
+        return (self.players == NETWORK and self.net_ready
+                and self.current_side() == self.my_side)
+
+    @property
+    def network_color_text(self) -> str:
+        if self.players == NETWORK and self.DOT:
+            return f"Kolor Twoich pionków: {self.SIDE_NAMES[self.my_side]}"
+        return ""
 
     def schedule_ai(self):
         """Wołane na początku każdej tury: w grze z komputerem jego ruch po AI_DELAY s."""
@@ -154,9 +186,9 @@ class BoardWidget(Widget):
         if self.players == NETWORK:
             if not self.net_ready:
                 return "Oczekiwanie na gracza"
-            color = self._color(side)
+            self._color(side)
             return ("Czekam na Twój ruch" if side == self.my_side
-                    else "Czekam na ruch przeciwnika:") + color
+                    else "Czekam na ruch przeciwnika")
         color = self._color(side)
         if self.players == 1:
             return f"Twój ruch{color}" if side == 0 else f"Ruch komputera{color}"
@@ -199,11 +231,13 @@ class BoardWidget(Widget):
         self._used = self.net()
         self.my_side, self.peer, self.net_ready = side, peer, True
         self.refresh_status()
+        self.redraw()
 
     def accepted(self, peer: str):
         """Drugi tablet przyjął moje zaproszenie."""
         self.peer, self.net_ready = peer, True
         self.refresh_status()
+        self.redraw()
 
     def leave_network(self):
         net = self._used or self.net()

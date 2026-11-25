@@ -192,8 +192,12 @@ class Smoke(main.DzieciApp):
             lambda: GAMES["chess"].set_mode(NETWORK, "ha"),
             lambda: setattr(GAMES["chess"], "net_ready", True),
             lambda: [GAMES["chess"].new_game(), GAMES["chess"].tap(6, 4)],
+            lambda: check(dots(GAMES["chess"].canvas.after) == 2,
+                          "szachy nie pokazują podpowiedzi w Twojej turze sieciowej"),
+            lambda: GAMES["chess"].tap(4, 4),
             lambda: check(dots(GAMES["chess"].canvas.after) == 0,
-                          "szachy pokazują podpowiedzi w grze sieciowej"),
+                          "szachy pokazują podpowiedzi w turze przeciwnika"),
+            lambda: GAMES["chess"].set_mode(1),
             lambda: GAMES["checkers"].set_mode(1),
             lambda: [GAMES["checkers"].new_game(), GAMES["checkers"].tap(5, 0)],
             lambda: check(dots(GAMES["checkers"].canvas) >= 1,
@@ -201,8 +205,12 @@ class Smoke(main.DzieciApp):
             lambda: GAMES["checkers"].set_mode(NETWORK, "ha"),
             lambda: setattr(GAMES["checkers"], "net_ready", True),
             lambda: [GAMES["checkers"].new_game(), GAMES["checkers"].tap(5, 0)],
+            lambda: check(dots(GAMES["checkers"].canvas) >= 1,
+                          "warcaby nie pokazują podpowiedzi w Twojej turze sieciowej"),
+            lambda: GAMES["checkers"].tap(4, 1),
             lambda: check(dots(GAMES["checkers"].canvas) == 0,
-                          "warcaby pokazują podpowiedzi w grze sieciowej"),
+                          "warcaby pokazują podpowiedzi w turze przeciwnika"),
+            lambda: GAMES["checkers"].set_mode(1),
             # wybór strony w szachach poprzedza wysłanie zaproszenia i oczekiwanie
             lambda: self.nav("chess"),
             lambda: self.activate_game_mode(GAMES["chess"], NETWORK, "ha", True),
@@ -210,9 +218,13 @@ class Smoke(main.DzieciApp):
                           and self.net.session is None,
                           "szachy rozpoczęły oczekiwanie przed wyborem strony"),
             lambda: self._side_popup.select(1),
+            None,
             lambda: check(self._waiting_popup is not None
-                          and self.net.sent[-1].get("side") == 1,
-                          "wybór czarnych nie rozpoczął oczekiwania z właściwą stroną"),
+                          and self.net.sent[-1].get("side") == 1
+                          and GAMES["chess"].network_color_text == "Kolor Twoich pionków: czarne"
+                          and any(getattr(w.ids.get("side"), "text", "") == "Kolor Twoich pionków: czarne"
+                                  for w in sm.get_screen("chess").walk() if hasattr(w, "board")),
+                          "wybór czarnych nie pokazał koloru na ekranie"),
             # inicjator może przerwać oczekiwanie i wrócić do trybu lokalnego
             lambda: self._waiting_popup.cancel(),
             lambda: check(GAMES["chess"].players == 1 and self.net.session is None,
@@ -236,8 +248,15 @@ class Smoke(main.DzieciApp):
             lambda: check(sm.current == "chess" and GAMES["chess"].players == NETWORK
                           and GAMES["chess"].my_side == 0 and GAMES["chess"].net_ready
                           and GAMES["chess"].human_turn()
-                          and GAMES["chess"].status.startswith("Czekam na Twój ruch"),
-                          "potwierdzenie nie uruchomiło szachów sieciowych"),
+                          and GAMES["chess"].status == "Czekam na Twój ruch"
+                          and GAMES["chess"].network_color_text == "Kolor Twoich pionków: białe",
+                          f"potwierdzenie: players={GAMES['chess'].players}, side={GAMES['chess'].my_side}, "
+                          f"ready={GAMES['chess'].net_ready}, status={GAMES['chess'].status!r}, "
+                          f"color={GAMES['chess'].network_color_text!r}, "
+                          f"hints={dots(GAMES['chess'].canvas.after)}"),
+            lambda: GAMES["chess"].tap(6, 4),
+            lambda: check(dots(GAMES["chess"].canvas.after) == 2,
+                          "szachy: brak podpowiedzi po wybraniu figury we własnej turze"),
             lambda: [GAMES["chess"].tap(6, 4), GAMES["chess"].tap(4, 4)],
             lambda: check(self.net.sent[-1].get("move") == [6, 4, 4, 4],
                           "biały ruch po akceptacji nie został wysłany"),
@@ -252,6 +271,20 @@ class Smoke(main.DzieciApp):
             lambda: self.on_game_event(msg(type="leave", game="chess", session="s2",
                                            to=self.tablet_name)),
             lambda: check("zakończył" in GAMES["chess"].status, "brak napisu o wyjściu"),
+            # gdy obaj inicjują równocześnie, tablet o niższej nazwie zostaje inicjatorem
+            lambda: self.activate_game_mode(GAMES["chess"], NETWORK, "ha", False),
+            lambda: self.on_game_event({**msg(type="invite", game="chess", session="collision",
+                                              side=0), "from": "!Drugi tablet"}),
+            lambda: check(self._waiting_popup is None and self._invite is not None
+                          and GAMES["chess"].players == 1,
+                          "równoczesne zaproszenia nie zamknęły oczekiwania przegranego"),
+            lambda: self._invite.answer(True),
+            lambda: self.on_game_event(msg(type="ready", game="chess", session="collision",
+                                           to=self.tablet_name)),
+            lambda: check(self._waiting_popup is None and self._join_pending is None
+                          and GAMES["chess"].net_ready,
+                          "po dołączeniu zostało okno oczekiwania inicjatora"),
+            lambda: self.nav("chess"),
             # sieć: ten tablet zaprasza do warcabów, drugi przyjmuje
             lambda: self.nav("checkers"),
             lambda: self.activate_game_mode(GAMES["checkers"], NETWORK, "ha", False, 1),
@@ -270,7 +303,8 @@ class Smoke(main.DzieciApp):
             lambda: check(self._waiting_popup is None and GAMES["checkers"].net_ready
                           and GAMES["checkers"].my_side == 1
                           and not GAMES["checkers"].human_turn()
-                          and GAMES["checkers"].status.startswith("Czekam na ruch przeciwnika:"),
+                          and GAMES["checkers"].status == "Czekam na ruch przeciwnika"
+                          and GAMES["checkers"].network_color_text == "Kolor Twoich pionków: czarne",
                           "akceptacja nie odblokowała stanu warcabów albo strony"),
             lambda: self.on_game_event(msg(type="move", game="checkers", session=self.net.session,
                                            to=self.tablet_name, move=[5, 0, 4, 1])),
@@ -359,7 +393,7 @@ class Smoke(main.DzieciApp):
             lambda: GAMES["ships"].tap(0, 0),
             lambda: check(self.net.sent[-1].get("move") == [0, 0, 0] and GAMES["ships"].waiting,
                           f"statki: strzał nie poszedł {self.net.sent[-1]}"),
-            lambda: check(GAMES["ships"].status == "Czekam na ruch przeciwnika:",
+            lambda: check(GAMES["ships"].status == "Czekam na ruch przeciwnika",
                           "statki: brak informacji o oczekiwaniu na przeciwnika"),
             lambda: GAMES["ships"].tap(5, 5),         # czekam na wynik - drugi strzał nic nie robi
             lambda: check(self.net.sent[-1].get("move") == [0, 0, 0], "statki: dwa strzały naraz"),
@@ -479,8 +513,8 @@ class Smoke(main.DzieciApp):
             lambda: self.on_game_event(msg(type="ready_ack", game="football",
                                            to=self.tablet_name, session=self.net.session)),
             lambda: [GAMES["football"].redraw(),
-                     check(dots(GAMES["football"].canvas) <= 2,
-                           "piłkarzyki pokazują podpowiedzi w grze sieciowej")],
+                     check(dots(GAMES["football"].canvas) > 2,
+                           "piłkarzyki nie pokazują podpowiedzi w Twojej turze sieciowej")],
             lambda: GAMES["football"].tap(4, 4),
             lambda: check(self.net.sent[-1].get("move") == [5 * 9 + 4],
                           f"piłkarzyki: {self.net.sent[-1]}"),

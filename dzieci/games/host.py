@@ -198,6 +198,26 @@ class GamesHost:
         self._waiting_popup = NetworkWaitPopup(lambda: self._cancel_waiting(board))
         self._waiting_popup.open()
 
+    def _resolve_invite_collision(self, msg, net):
+        board = self._waiting_board
+        if board is None or board.GAME != msg.get("game") \
+                or (board._used or board.net()) is not net:
+            return False
+
+        local_key = (str(net.name).casefold(), str(net.session or ""))
+        remote_key = (str(msg.get("from", "")).casefold(), str(msg.get("session", "")))
+        if local_key < remote_key:
+            return True
+
+        self._close_waiting(board)
+        board.return_to_local_mode()
+        if net is self.direct:
+            self._answer_invite(msg, True, silent=True)
+        elif self._invite is None:
+            self._invite = InvitePopup(msg, self._answer_invite)
+            self._invite.open()
+        return True
+
     def _close_waiting(self, board=None):
         if board is not None and self._waiting_board is not board:
             return
@@ -266,6 +286,8 @@ class GamesHost:
         if board is None or net is None:
             return
         if kind == "invite":
+            if self._resolve_invite_collision(msg, net):
+                return
             busy = self._waiting_board is not None or self._join_pending is not None or any(
                 b.players == NETWORK for b in GAMES.values())
             if net is self.direct:
@@ -297,6 +319,7 @@ class GamesHost:
                     self._join_timeout.cancel()
                     self._join_timeout = None
                 self._join_pending = None
+                self._close_waiting(board)
                 board.join(sender, pending[3], side=pending[4])
                 net.ready_ack(board.GAME)
         elif kind == "ready_ack" and board.players == NETWORK:

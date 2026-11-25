@@ -123,38 +123,52 @@
 
 # Napis pod planszą z kółkiem koloru strony zamiast słowa "białe"/"czarne" (szachy, warcaby):
 # białe albo czarne kółko z delikatną białą obwódką; board.dot - strona (-1 bez kółka)
-<DotStatus@AnchorLayout>:
-    board: None
+<DotStatus>:
     size_hint_y: None
-    height: 70
+    height: 108 if root.show_color else 70
     BoxLayout:
-        size_hint_x: None
-        width: lbl.width + dot.width + self.spacing
-        spacing: 14
+        orientation: "vertical"
+        size_hint: None, None
+        width: max(turn.width, side.width)
+        height: turn.height + side.height
+        BoxLayout:
+            id: turn
+            size_hint: None, None
+            width: lbl.width + dot.width + self.spacing
+            height: 70
+            spacing: 14
+            Label:
+                id: lbl
+                text: root.turn_text
+                font_size: "32sp"
+                bold: True
+                color: GRY_TEXT
+                size_hint_x: None
+                width: self.texture_size[0]
+            Widget:
+                id: dot
+                size_hint_x: None
+                width: 40 if root.dot >= 0 else 0
+                opacity: 1 if root.dot >= 0 else 0
+                canvas:
+                    Color:
+                        rgba: 1, 1, 1, 0.9
+                    Ellipse:
+                        pos: self.center_x - 19, self.center_y - 19
+                        size: 38, 38
+                    Color:
+                        rgba: (0.97, 0.96, 0.92, 1) if root.dot == 0 else (0.12, 0.12, 0.14, 1)
+                    Ellipse:
+                        pos: self.center_x - 16, self.center_y - 16
+                        size: 32, 32
         Label:
-            id: lbl
-            text: root.board.status if root.board else ""
-            font_size: "32sp"
+            id: side
+            text: root.color_text
+            font_size: "24sp"
             bold: True
             color: GRY_TEXT
-            size_hint_x: None
-            width: self.texture_size[0]
-        Widget:
-            id: dot
-            size_hint_x: None
-            width: 40 if (root.board and root.board.dot >= 0) else 0
-            opacity: 1 if (root.board and root.board.dot >= 0) else 0
-            canvas:
-                Color:
-                    rgba: 1, 1, 1, 0.9
-                Ellipse:
-                    pos: self.center_x - 19, self.center_y - 19
-                    size: 38, 38
-                Color:
-                    rgba: (0.97, 0.96, 0.92, 1) if (root.board and root.board.dot == 0) else (0.12, 0.12, 0.14, 1)
-                Ellipse:
-                    pos: self.center_x - 16, self.center_y - 16
-                    size: 32, 32
+            size_hint: None, None
+            size: self.texture_size[0], 38 if root.show_color else 0
 # Napis pod planszą: czyj ruch, kto wygrał
 <GameStatus@Label>:
     font_size: "32sp"

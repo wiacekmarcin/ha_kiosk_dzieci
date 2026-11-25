@@ -49,6 +49,7 @@ from kivy.properties import StringProperty  # noqa: E402
 from dzieci import clocks  # noqa: E402 - klasy zegarów dla ekran.kv
 from dzieci.announce import DayAnnouncer  # noqa: E402
 from dzieci.games import chess, checkers, dice, dots, football, paint, pdots, ships, snake, tetris, tictactoe  # noqa: E402,F401 - klasy gier dla gry.kv
+from dzieci.games.board import DotStatus  # noqa: E402,F401 - widżet statusu dla gry.kv
 from dzieci.games.host import GamesHost  # noqa: E402
 from dzieci.music import MusicPlayer  # noqa: E402
 from dzieci import coloring  # noqa: E402,F401 - klasy kolorowanek dla kolorowanki.kv
