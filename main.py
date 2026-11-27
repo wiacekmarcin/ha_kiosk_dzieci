@@ -118,7 +118,7 @@ class DzieciApp(GamesHost, App):
         self.voice = None
         self.voice_recorder = voice.Recorder()
         self.voice_player = voice.Player()
-        self.clock_speech = ClockSpeech()
+        self.clock_speech = ClockSpeech(self.voice_player)
         self._last_clock_read = float("-inf")
         self.volume_value = device.volume()
         # komunikat głosowy przy zmianie pory dnia ("Czas na śniadanie")
@@ -192,27 +192,13 @@ class DzieciApp(GamesHost, App):
         if not self._clock_read_allowed():
             return
         now = clocks.now()
-        forms = (
-            (("godzina", "godziny", "godzin"), now.hour),
-            (("minuta", "minuty", "minut"), now.minute),
-            (("sekunda", "sekundy", "sekund"), now.second),
-        )
-        parts = []
-        for (singular, paucal, plural), value in forms:
-            last_two = value % 100
-            form = singular if value % 10 == 1 and last_two != 11 else (
-                paucal if value % 10 in (2, 3, 4) and last_two not in (12, 13, 14)
-                else plural)
-            parts.append(f"{value} {form}")
-        self.clock_speech.say(", ".join(parts) + ".")
+        self.clock_speech.say_time(now)
 
     def read_date(self):
         if not self._clock_read_allowed():
             return
         now = clocks.now()
-        season = clocks.plan.SEASONS[clocks.plan.current_season(now.date())[0]][1].lower()
-        self.clock_speech.say(
-            f"Dzisiaj jest {now.day} {clocks.MONTHS[now.month - 1]}. Pora roku: {season}.")
+        self.clock_speech.say_date(now)
 
     def _update_battery(self, _dt):
         info = device.battery()

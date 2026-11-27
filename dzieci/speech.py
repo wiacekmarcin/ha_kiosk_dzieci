@@ -1,76 +1,44 @@
-"""Mowa z zegara przez systemowy syntezator mowy Androida."""
-from kivy.clock import Clock
+"""Odczyt zegara z lokalnych próbek polskiego głosu."""
+from pathlib import Path
+
 from kivy.logger import Logger
-from kivy.utils import platform
+
+from dzieci import plan
+
+AUDIO = Path(__file__).resolve().parents[1] / "assets" / "clock_audio"
 
 
 class ClockSpeech:
-    def __init__(self):
-        self._tts = None
-        self._listener = None
-        self._pending = ""
-        self._ready = False
+    def __init__(self, player):
+        self.player = player
 
-    def say(self, text: str):
-        if platform != "android":
-            Logger.warning("Zegar: odczyt głosowy jest dostępny na tablecie Android")
+    def say_time(self, now):
+        samples = [
+            f"hour_{now.hour:02d}.mp3",
+            f"minute_{now.minute:02d}.mp3",
+            f"second_{now.second:02d}.mp3",
+        ]
+        self._play(samples)
+
+    def say_date(self, now):
+        season = plan.SEASONS[plan.current_season(now.date())[0]][0]
+        samples = [
+            "today.mp3",
+            f"day_{now.day:02d}.mp3",
+            f"month_{now.month:02d}.mp3",
+            "season_intro.mp3",
+            f"season_{season}.mp3",
+        ]
+        self._play(samples)
+
+    def _play(self, samples):
+        paths = [AUDIO / name for name in samples]
+        missing = [path.name for path in paths if not path.is_file()]
+        if missing:
+            Logger.error(f"Zegar: brakuje próbek głosu: {', '.join(missing)}")
             return
-        self._pending = text
-        if self._tts is not None:
-            if self._ready:
-                self._speak()
+        if self.player is None:
+            Logger.error("Zegar: odtwarzacz komunikatów nie jest dostępny")
             return
-        try:
-            from jnius import PythonJavaClass, autoclass, java_method
-
-            owner = self
-
-            class InitListener(PythonJavaClass):
-                __javainterfaces__ = ["android/speech/tts/TextToSpeech$OnInitListener"]
-                __javacontext__ = "app"
-
-                def __init__(self):
-                    super().__init__()
-
-                @java_method("(I)V")
-                def onInit(self, status):
-                    Clock.schedule_once(lambda _dt: owner._on_init(status))
-
-            self._listener = InitListener()
-            activity = autoclass("org.kivy.android.PythonActivity").mActivity
-            tts_class = autoclass("android.speech.tts.TextToSpeech")
-            self._tts_class = tts_class
-            self._tts = tts_class(activity, self._listener)
-        except Exception as exc:
-            self._tts = None
-            Logger.error(f"Zegar: nie udało się uruchomić syntezatora mowy: {exc}")
-
-    def _on_init(self, status):
-        if status != self._tts_class.SUCCESS:
-            Logger.error(f"Zegar: inicjalizacja syntezatora mowy nie powiodła się ({status})")
-            self._tts = None
-            return
-        try:
-            from jnius import autoclass
-            result = self._tts.setLanguage(autoclass("java.util.Locale")("pl", "PL"))
-            if result < 0:
-                Logger.error("Zegar: brak polskiego głosu w syntezatorze Androida")
-                self._tts = None
-                return
-        except Exception as exc:
-            Logger.error(f"Zegar: nie udało się ustawić polskiego głosu: {exc}")
-            self._tts = None
-            return
-        self._ready = True
-        self._speak()
-
-    def _speak(self):
-        text, self._pending = self._pending, ""
-        if not text:
-            return
-        try:
-            from jnius import autoclass
-            bundle = autoclass("android.os.Bundle")()
-            self._tts.speak(text, self._tts_class.QUEUE_FLUSH, bundle, "clock-readout")
-        except Exception as exc:
-            Logger.error(f"Zegar: nie udało się odczytać godziny: {exc}")
+        Logger.info(f"Zegar: odtwarzam próbki: {', '.join(samples)}")
+        self.player.play(paths)

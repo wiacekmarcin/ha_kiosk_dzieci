@@ -254,17 +254,17 @@
                 valign: "middle"
                 shorten: True
             GalleryStepButton:
+                text: "−50"
+                on_release: root.step(-50)
+            GalleryStepButton:
                 text: "−10"
                 on_release: root.step(-10)
             GalleryStepButton:
-                text: "−1"
-                on_release: root.step(-1)
-            GalleryStepButton:
-                text: "+1"
-                on_release: root.step(1)
-            GalleryStepButton:
                 text: "+10"
                 on_release: root.step(10)
+            GalleryStepButton:
+                text: "+50"
+                on_release: root.step(50)
         FloatLayout:
             ScrollView:
                 pos: self.parent.pos

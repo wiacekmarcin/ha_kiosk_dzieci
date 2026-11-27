@@ -169,15 +169,15 @@ BoxLayout:
                     Caption:
                         text: season.caption
                     Widget:
-            # imię dziecka na dole pod zegarami (tablet.json, osobne na każdym tablecie)
+            # Imię dziecka (tablet.json, osobne na każdym tablecie).
             Label:
                 text: app.child_name
-                font_size: "52sp"
+                font_size: "48sp"
                 bold: True
                 color: WARM
                 size_hint: 1, None
                 height: 90
-                pos_hint: {"x": 0, "y": 0.03}
+                pos_hint: {"center_x": 0.5, "top": 0.98}
         # gry - wspólne ekrany z dzieci/games/gry.kv
         GamesScreen:
         TicTacToeScreen:

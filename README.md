@@ -42,11 +42,15 @@ Nad zegarem analogowym widać godzinę HH:MM:SS w formacie 24-godzinnym, a nad z
 roku - dzień, nazwę miesiąca i aktualną porę roku. Przycisk „Sprawdź” znajduje się blisko
 lewego zegara. Kliknięcie godziny odczytuje godziny, minuty i sekundy; kliknięcie daty
 odczytuje dzień, miesiąc i porę roku. Odczyty są ograniczone do jednego na 15 sekund.
+Polskie komunikaty godziny i daty są odtwarzane z lokalnych próbek w `assets/clock_audio`,
+więc działają bez polskiego głosu w systemowym syntezatorze Androida. Próbki generuje
+`tools/make_clock_sounds.py` (edge-tts, głos pl-PL-ZofiaNeural).
 Pod lewym zegarem są skróty do odtwarzania/pauzy i zatrzymania muzyki oraz suwak
-głośności; wygaszacz jest w menu po prawej.
+głośności; wygaszacz jest w menu po prawej. Imię dziecka jest wyświetlane u góry,
+na środku ekranu.
 
-Galeria pod ikoną aparatu pokazuje do 10 miniatur naraz. Przyciski `−1`/`+1` i
-`−10`/`+10` przesuwają widok po zdjęciach; dotknięcie miniatury otwiera pełne zdjęcie.
+Galeria pod ikoną aparatu pokazuje do 10 miniatur naraz. Przyciski `−10`/`+10` i
+`−50`/`+50` przesuwają widok po zdjęciach; dotknięcie miniatury otwiera pełne zdjęcie.
 
 ## Budowanie
 

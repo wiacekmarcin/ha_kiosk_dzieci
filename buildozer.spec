@@ -2,9 +2,9 @@
 title = Kiosk dzieci
 package.name = hakioskdzieci
 package.domain = pl.mieszkanie
-version = 0.36
+version = 0.37
 source.dir = .
-source.include_exts = py,png,kv,ttf,json,ogg
+source.include_exts = py,png,kv,ttf,json,ogg,mp3
 source.exclude_dirs = tools, bin, .buildozer, __pycache__, .venv, venv
 source.exclude_patterns = buildozer.spec, sync_kiosk.sh, README.md
 # kiosk/ i assets/fonts, assets/sounds kopiuje sync_kiosk.sh z ../ha_kiosk (ha_kiosk_hol);

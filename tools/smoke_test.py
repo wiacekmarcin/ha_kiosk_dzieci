@@ -136,10 +136,10 @@ def check(cond, text):
 
 def test_clock_readout(app):
     class Capture:
-        texts = []
+        samples = []
 
-        def say(self, text):
-            self.texts.append(text)
+        def play(self, paths):
+            self.samples.append([Path(path).name for path in paths])
 
     original_now = main.clocks.now
     original_monotonic = main.time.monotonic
@@ -149,7 +149,7 @@ def test_clock_readout(app):
     try:
         main.clocks.now = lambda: datetime(2026, 1, 2, 3, 4, 5)
         main.time.monotonic = lambda: next(ticks)
-        app.clock_speech = speaker
+        app.clock_speech = main.ClockSpeech(speaker)
         app.read_clock()
         app.read_date()
         app.read_date()
@@ -157,9 +157,11 @@ def test_clock_readout(app):
         main.clocks.now = original_now
         main.time.monotonic = original_monotonic
         app.clock_speech, app._last_clock_read = original_speech, original_last
-    check(speaker.texts == ["3 godziny, 4 minuty, 5 sekund.",
-                            "Dzisiaj jest 2 stycznia. Pora roku: zima."],
-          f"nieprawidłowy odczyt zegara albo limit 15 s: {speaker.texts!r}")
+    check(speaker.samples == [
+        ["hour_03.mp3", "minute_04.mp3", "second_05.mp3"],
+        ["today.mp3", "day_02.mp3", "month_01.mp3", "season_intro.mp3",
+         "season_zima.mp3"],
+    ], f"nieprawidłowy odczyt zegara albo limit 15 s: {speaker.samples!r}")
 
 
 class FakeTouch:
@@ -230,15 +232,15 @@ class Smoke(main.DzieciApp):
                      sm.get_screen("gallery").step(10)],
             lambda: check(sm.get_screen("gallery").position == 10,
                           "galeria: skok o 10 zdjęć nie działa"),
-            lambda: sm.get_screen("gallery").step(-1),
-            lambda: check(sm.get_screen("gallery").position == 9,
-                          "galeria: cofnięcie o 1 zdjęcie nie działa"),
-            lambda: sm.get_screen("gallery").step(1),
-            lambda: check(sm.get_screen("gallery").position == 10,
-                          "galeria: przejście o 1 zdjęcie nie działa"),
             lambda: sm.get_screen("gallery").step(-10),
             lambda: check(sm.get_screen("gallery").position == 0,
                           "galeria: cofnięcie o 10 zdjęć nie działa"),
+            lambda: sm.get_screen("gallery").step(50),
+            lambda: check(sm.get_screen("gallery").position == 15,
+                          "galeria: skok o 50 zdjęć nie ograniczył się do końca listy"),
+            lambda: sm.get_screen("gallery").step(-50),
+            lambda: check(sm.get_screen("gallery").position == 0,
+                          "galeria: cofnięcie o 50 zdjęć nie ograniczyło się do początku"),
             lambda: next(w for w in sm.get_screen("gallery").ids.gallery_grid.children
                          if w.position == 0).on_release(),
             lambda: check(sm.current == "photos" and sm.get_screen("photos").position == 0,
