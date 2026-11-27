@@ -12,19 +12,19 @@
     code: 0
     target: ""
     size_hint_y: None
-    height: 84
+    height: 74
     on_release: app.nav(self.target)
     canvas.before:
         Color:
             rgba: (1, 1, 1, 0.20) if self.state == "down" else (1, 1, 1, 0.07)
         RoundedRectangle:
-            pos: self.center_x - 40, self.center_y - 40
-            size: 80, 80
-            radius: [24]
+            pos: self.center_x - 34, self.center_y - 34
+            size: 68, 68
+            radius: [22]
     Label:
         text: chr(root.code) if root.code else icons.glyph(root.icon)
         font_name: icons.FONT_NAME
-        font_size: "46sp"
+        font_size: "42sp"
         color: WARM
         size_hint: None, None
         size: self.texture_size
@@ -87,6 +87,16 @@
         bold: True
         color: TEXT
 
+<ReadoutButton@ButtonBehavior+Label>:
+    size_hint_y: None
+    height: 56
+    font_size: "30sp"
+    bold: True
+    color: TEXT
+    text_size: self.size
+    halign: "center"
+    valign: "middle"
+
 BoxLayout:
     orientation: "horizontal"
 
@@ -100,10 +110,10 @@ BoxLayout:
                 BoxLayout:
                     orientation: "vertical"
                     spacing: 14
+                    Widget:
                     ReadClockButton:
                         pos_hint: {"center_x": 0.5}
                         on_release: app.read_clock()
-                    Widget:
                     DayClock:
                         id: day
                         size_hint_y: None
@@ -122,34 +132,20 @@ BoxLayout:
                         HomeControlButton:
                             code: 0xF04DB
                             on_release: app.music.stop()
-                        Label:
-                            text: chr(0xF057E)
-                            font_name: icons.FONT_NAME
-                            font_size: "26sp"
-                            color: WARM
-                            size_hint_x: None
-                            width: 28
                         Slider:
                             min: 0
                             max: 100
                             value: app.volume_value
                             on_value: app.set_music_volume(self.value)
-                        HomeControlButton:
-                            code: 0xF0379
-                            on_release: app.screensaver.blank()
                     Widget:
                 BoxLayout:
                     orientation: "vertical"
                     spacing: 14
                     size_hint_x: 1.12
                     Widget:
-                    Label:
-                        text: app.clock_time_text
-                        font_size: "34sp"
-                        bold: True
-                        color: TEXT
-                        size_hint_y: None
-                        height: 56
+                    ReadoutButton:
+                        text: "Godzina: " + app.clock_time_text
+                        on_release: app.read_clock()
                     AnalogClock:
                         id: analog
                         size_hint_y: None
@@ -162,13 +158,10 @@ BoxLayout:
                     orientation: "vertical"
                     spacing: 14
                     Widget:
-                    Label:
+                    ReadoutButton:
                         text: app.clock_date_text
-                        font_size: "28sp"
-                        bold: True
-                        color: TEXT
-                        size_hint_y: None
-                        height: 56
+                        font_size: "25sp"
+                        on_release: app.read_date()
                     SeasonClock:
                         id: season
                         size_hint_y: None
@@ -206,6 +199,7 @@ BoxLayout:
         # aparat - dzieci/camera/aparat.kv
         CameraScreen:
         PhotosScreen:
+        GalleryScreen:
 
     # Menu po prawej: dom, godzina, data, słuchawka, gry
     BoxLayout:
@@ -226,13 +220,6 @@ BoxLayout:
         RailButton:
             icon: "home"
             target: "home"
-        RailText:
-            text: app.time_text
-            font_size: "40sp"
-        RailText:
-            text: app.date_text
-            font_size: "34sp"
-            color: WARM
         RailButton:
             icon: "phone"
             target: "voice"
@@ -252,6 +239,14 @@ BoxLayout:
             # camera z Material Design Icons - aparat (zdjęcia na kartę SD)
             code: 0xF0100
             target: "camera"
+        RailButton:
+            # image-multiple z Material Design Icons - galeria
+            code: 0xF02F9
+            target: "gallery"
+        RailButton:
+            # monitor z Material Design Icons - wygaszacz ekranu
+            code: 0xF0379
+            target: "screensaver"
         Widget:
         RailButton:
             # exit-run z Material Design Icons - wyjście z aplikacji (3 razy „Tak”)

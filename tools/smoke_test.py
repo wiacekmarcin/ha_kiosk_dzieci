@@ -136,22 +136,30 @@ def check(cond, text):
 
 def test_clock_readout(app):
     class Capture:
-        text = ""
+        texts = []
 
         def say(self, text):
-            self.text = text
+            self.texts.append(text)
 
-    original_now, original_speech = main.clocks.now, app.clock_speech
+    original_now = main.clocks.now
+    original_monotonic = main.time.monotonic
+    original_speech, original_last = app.clock_speech, app._last_clock_read
     speaker = Capture()
+    ticks = iter((100, 114, 115))
     try:
         main.clocks.now = lambda: datetime(2026, 1, 2, 3, 4, 5)
+        main.time.monotonic = lambda: next(ticks)
         app.clock_speech = speaker
         app.read_clock()
+        app.read_date()
+        app.read_date()
     finally:
-        main.clocks.now, app.clock_speech = original_now, original_speech
-    check(speaker.text == "Jest godzina 03:04 i 5 sekund. Dzisiaj jest 2 stycznia. "
-                          "Pora roku: zima.",
-          f"nieprawidłowy odczyt czasu: {speaker.text!r}")
+        main.clocks.now = original_now
+        main.time.monotonic = original_monotonic
+        app.clock_speech, app._last_clock_read = original_speech, original_last
+    check(speaker.texts == ["3 godziny, 4 minuty, 5 sekund.",
+                            "Dzisiaj jest 2 stycznia. Pora roku: zima."],
+          f"nieprawidłowy odczyt zegara albo limit 15 s: {speaker.texts!r}")
 
 
 class FakeTouch:
@@ -209,6 +217,33 @@ class Smoke(main.DzieciApp):
                               for w in sm.get_screen("start").walk()),
                           "brak przycisku Sprawdź na ekranie głównym"),
             lambda: test_clock_readout(self),
+            lambda: self.nav("gallery"),
+            None,
+            lambda: check(sm.current == "gallery" and self.root.ids.rail.width == 0
+                          and len(sm.get_screen("gallery").ids.gallery_grid.children) == 2,
+                          f"galeria: ekran={sm.current}, rail={self.root.ids.rail.width}, "
+                          f"miniatur={len(sm.get_screen('gallery').ids.gallery_grid.children)}, "
+                          f"zdjęć={len(sm.get_screen('gallery').photos)}"),
+            lambda: [setattr(sm.get_screen("gallery"), "photos",
+                             [sm.get_screen("gallery").photos[0]] * 25),
+                     setattr(sm.get_screen("gallery"), "position", 0),
+                     sm.get_screen("gallery").step(10)],
+            lambda: check(sm.get_screen("gallery").position == 10,
+                          "galeria: skok o 10 zdjęć nie działa"),
+            lambda: sm.get_screen("gallery").step(-1),
+            lambda: check(sm.get_screen("gallery").position == 9,
+                          "galeria: cofnięcie o 1 zdjęcie nie działa"),
+            lambda: sm.get_screen("gallery").step(1),
+            lambda: check(sm.get_screen("gallery").position == 10,
+                          "galeria: przejście o 1 zdjęcie nie działa"),
+            lambda: sm.get_screen("gallery").step(-10),
+            lambda: check(sm.get_screen("gallery").position == 0,
+                          "galeria: cofnięcie o 10 zdjęć nie działa"),
+            lambda: next(w for w in sm.get_screen("gallery").ids.gallery_grid.children
+                         if w.position == 0).on_release(),
+            lambda: check(sm.current == "photos" and sm.get_screen("photos").position == 0,
+                          "wybór miniatury nie otworzył odpowiedniego zdjęcia"),
+            lambda: self.nav("home"),
             lambda: self.nav("games"),
             lambda: check(self.root.ids.rail.opacity == 0 and self.root.ids.rail.width == 0
                           and self.root.ids.rail.disabled,

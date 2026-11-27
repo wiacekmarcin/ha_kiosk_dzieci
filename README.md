@@ -35,13 +35,18 @@ Trzy zegary:
   wiosna - kołyszący się tulipan, lato - pulsujące słońce, jesień - opadające liście),
   wskazówka pokazuje bieżącą porę roku (astronomiczną: 21.03, 21.06, 23.09, 22.12).
 
-Menu po prawej: dom (powrót do ekranu startowego), godzina HH:MM, data D-M i słuchawka -
-wiadomości głosowe przez Home Assistant, tak samo jak w kiosku w holu.
+Menu po prawej: dom (powrót do ekranu startowego), słuchawka - wiadomości głosowe przez
+Home Assistant, aparat i galeria zdjęć.
 
 Nad zegarem analogowym widać godzinę HH:MM:SS w formacie 24-godzinnym, a nad zegarem pór
-roku - dzień, nazwę miesiąca i aktualną porę roku. Przycisk „Sprawdź” odczytuje te
-informacje po polsku przez syntezator mowy Androida. Pod lewym zegarem są skróty do
-odtwarzania/pauzy i zatrzymania muzyki, suwak głośności oraz ręczne wygaszanie ekranu.
+roku - dzień, nazwę miesiąca i aktualną porę roku. Przycisk „Sprawdź” znajduje się blisko
+lewego zegara. Kliknięcie godziny odczytuje godziny, minuty i sekundy; kliknięcie daty
+odczytuje dzień, miesiąc i porę roku. Odczyty są ograniczone do jednego na 15 sekund.
+Pod lewym zegarem są skróty do odtwarzania/pauzy i zatrzymania muzyki oraz suwak
+głośności; wygaszacz jest w menu po prawej.
+
+Galeria pod ikoną aparatu pokazuje do 10 miniatur naraz. Przyciski `−1`/`+1` i
+`−10`/`+10` przesuwają widok po zdjęciach; dotknięcie miniatury otwiera pełne zdjęcie.
 
 ## Budowanie
 

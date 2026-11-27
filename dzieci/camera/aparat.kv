@@ -194,3 +194,95 @@
                 font_size: "30sp"
                 color: APA_TEXT
                 pos_hint: {"x": 0, "y": 0}
+
+<GalleryTile>:
+    orientation: "vertical"
+    padding: 6
+    spacing: 4
+    size_hint_y: None
+    height: 280
+    canvas.before:
+        Color:
+            rgba: APA_TILE_DOWN if self.state == "down" else APA_TILE
+        RoundedRectangle:
+            pos: self.pos
+            size: self.size
+            radius: [18]
+    Image:
+        source: root.photo
+        nocache: True
+        fit_mode: "contain"
+    Label:
+        text: root.caption
+        font_size: "18sp"
+        color: APA_TEXT
+        size_hint_y: None
+        height: 30
+
+<GalleryStepButton@ButtonBehavior+Label>:
+    size_hint: None, None
+    size: 78, 60
+    font_size: "25sp"
+    bold: True
+    color: APA_WARM
+    canvas.before:
+        Color:
+            rgba: APA_TILE_DOWN if self.state == "down" else APA_TILE
+        RoundedRectangle:
+            pos: self.pos
+            size: self.size
+            radius: [18]
+
+<GalleryScreen>:
+    name: "gallery"
+    BoxLayout:
+        orientation: "vertical"
+        BoxLayout:
+            size_hint_y: None
+            height: 84
+            padding: [16, 10]
+            spacing: 12
+            CloseButton:
+                on_release: app.nav("home")
+            Label:
+                text: root.title
+                font_size: "28sp"
+                bold: True
+                color: APA_WARM
+                text_size: self.size
+                halign: "left"
+                valign: "middle"
+                shorten: True
+            GalleryStepButton:
+                text: "−10"
+                on_release: root.step(-10)
+            GalleryStepButton:
+                text: "−1"
+                on_release: root.step(-1)
+            GalleryStepButton:
+                text: "+1"
+                on_release: root.step(1)
+            GalleryStepButton:
+                text: "+10"
+                on_release: root.step(10)
+        FloatLayout:
+            ScrollView:
+                pos: self.parent.pos
+                size: self.parent.size
+                do_scroll_x: False
+                bar_width: 8
+                GridLayout:
+                    id: gallery_grid
+                    cols: 5
+                    spacing: 12
+                    padding: 12
+                    size_hint_y: None
+                    height: self.minimum_height
+            Label:
+                id: gallery_empty
+                text: "Brak zdjęć. Zrób pierwsze zdjęcie w Aparacie."
+                font_size: "28sp"
+                color: APA_TEXT
+                opacity: 0
+                pos: self.parent.pos
+                size: self.parent.size

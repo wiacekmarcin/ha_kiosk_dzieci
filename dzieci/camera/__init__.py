@@ -20,6 +20,9 @@ from kivy.clock import Clock, mainthread
 from kivy.graphics import Color, Rectangle
 from kivy.logger import Logger
 from kivy.properties import BooleanProperty, NumericProperty, StringProperty
+from kivy.uix.boxlayout import BoxLayout
+from kivy.uix.behaviors import ButtonBehavior
+from kivy.uix.gridlayout import GridLayout
 from kivy.uix.screenmanager import Screen
 from kivy.uix.widget import Widget
 from kivy.utils import platform
@@ -30,6 +33,8 @@ MAX_PREVIEW_WIDTH = 1280        # podgląd: największy rozmiar do tej szerokoś
 FALLBACK_PREVIEW = (640, 480)   # rozmiar podglądu obsługiwany przez każdą kamerę
 JPEG_QUALITY = 92
 REOPEN_GAP = 1.5                # s od zamknięcia kamery do ponownego otwarcia
+GALLERY_WINDOW = 10
+THUMBNAIL_SIZE = (320, 240)
 _sizes_cache = {}               # indeks kamery -> (podgląd, zdjęcie)
 _picture_cb = None              # jeden obiekt Javy na całe życie aplikacji
 _screen = None                  # ekran aparatu (pauza / wznowienie aplikacji)
@@ -61,6 +66,52 @@ def list_photos() -> list:
         return sorted(str(p) for p in folder.glob("*.jpg"))
     except OSError:
         return []
+
+
+def thumbnail_path(photo: str) -> str:
+    """Tworzy małą miniaturę w cache, dekodując JPEG z niższą rozdzielczością na Androidzie."""
+    if not ANDROID:
+        return photo
+    source = Path(photo)
+    target = Path(App.get_running_app().user_data_dir) / "Galeria" / f"{source.stem}.jpg"
+    try:
+        if target.is_file() and target.stat().st_mtime >= source.stat().st_mtime:
+            return str(target)
+        from jnius import autoclass
+        BitmapFactory = autoclass("android.graphics.BitmapFactory")
+        Options = autoclass("android.graphics.BitmapFactory$Options")
+        options = Options()
+        options.inJustDecodeBounds = True
+        BitmapFactory.decodeFile(str(source), options)
+        sample = 1
+        while (options.outWidth // (sample * 2) >= THUMBNAIL_SIZE[0]
+               and options.outHeight // (sample * 2) >= THUMBNAIL_SIZE[1]):
+            sample *= 2
+        options.inJustDecodeBounds = False
+        options.inSampleSize = sample
+        thumb = BitmapFactory.decodeFile(str(source), options)
+        if thumb is None:
+            raise RuntimeError(f"nie udało się zdekodować zdjęcia {source.name}")
+        width, height = thumb.getWidth(), thumb.getHeight()
+        scale = min(THUMBNAIL_SIZE[0] / width, THUMBNAIL_SIZE[1] / height, 1)
+        if scale < 1:
+            scaled = autoclass("android.graphics.Bitmap").createScaledBitmap(
+                thumb, int(width * scale), int(height * scale), True)
+            if scaled != thumb:
+                thumb.recycle()
+            thumb = scaled
+        output = autoclass("java.io.ByteArrayOutputStream")()
+        bitmap_format = autoclass("android.graphics.Bitmap$CompressFormat").JPEG
+        if not thumb.compress(bitmap_format, 82, output):
+            raise RuntimeError(f"nie udało się zapisać miniatury {source.name}")
+        target.parent.mkdir(parents=True, exist_ok=True)
+        target.write_bytes(output.toByteArray().tostring())
+        thumb.recycle()
+        output.close()
+        return str(target)
+    except Exception as exc:  # noqa: BLE001 - miniatura może zawieść, oryginał nadal działa
+        Logger.warning(f"Galeria: miniatura {source.name}: {exc}")
+        return photo
 
 
 def new_photo_path() -> Path:
@@ -353,10 +404,13 @@ class PhotosScreen(Screen):
     """Przeglądanie zdjęć: od najnowszego, Poprzednie / Następne."""
     source = StringProperty("")
     title = StringProperty("Zdjęcia")
+    start_position = NumericProperty(-1)
 
     def on_enter(self, *_):
         self.photos = list_photos()
-        self.position = len(self.photos) - 1
+        self.position = (int(self.start_position) if self.start_position >= 0
+                         else len(self.photos) - 1)
+        self.start_position = -1
         self._show()
 
     def step(self, delta: int):
@@ -370,3 +424,42 @@ class PhotosScreen(Screen):
             return
         self.source = self.photos[self.position]
         self.title = f"Zdjęcie {self.position + 1} z {len(self.photos)}"
+
+
+class GalleryTile(ButtonBehavior, BoxLayout):
+    photo = StringProperty("")
+    position = NumericProperty(0)
+    caption = StringProperty("")
+
+    def on_release(self):
+        App.get_running_app().open_photo(int(self.position))
+
+
+class GalleryScreen(Screen):
+    """Siatka dziesięciu miniatur; nawigacja przewija zdjęcia o 1 albo 10."""
+    title = StringProperty("Galeria")
+    position = NumericProperty(0)
+
+    def on_enter(self, *_):
+        self.photos = list_photos()
+        self.position = max(0, len(self.photos) - GALLERY_WINDOW)
+        self.refresh()
+
+    def step(self, delta: int):
+        if not self.photos:
+            return
+        self.position = max(0, min(len(self.photos) - GALLERY_WINDOW,
+                                   self.position + delta))
+        self.refresh()
+
+    def refresh(self):
+        photos = getattr(self, "photos", [])
+        start = int(self.position)
+        end = min(start + GALLERY_WINDOW, len(photos))
+        self.title = f"Galeria • zdjęcia {start + 1}-{end} z {len(photos)}" if photos else "Galeria"
+        grid = self.ids.gallery_grid
+        grid.clear_widgets()
+        for i in range(start, end):
+            grid.add_widget(GalleryTile(photo=thumbnail_path(photos[i]), position=i,
+                                        caption=f"{i + 1}"))
+        self.ids.gallery_empty.opacity = 0 if photos else 1

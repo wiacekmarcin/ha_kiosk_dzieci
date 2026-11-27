@@ -14,6 +14,7 @@ Podgląd na PC: DZIECI_SCREENSHOT=ekran.png python main.py (zrzut ekranu i konie
 """
 import json
 import os
+import time
 from datetime import datetime
 from pathlib import Path
 
@@ -118,6 +119,7 @@ class DzieciApp(GamesHost, App):
         self.voice_recorder = voice.Recorder()
         self.voice_player = voice.Player()
         self.clock_speech = ClockSpeech()
+        self._last_clock_read = float("-inf")
         self.volume_value = device.volume()
         # komunikat głosowy przy zmianie pory dnia ("Czas na śniadanie")
         self.announcer = DayAnnouncer(self.voice_player)
@@ -179,18 +181,47 @@ class DzieciApp(GamesHost, App):
         device.set_volume(value)
         self.volume_value = device.volume()
 
+    def _clock_read_allowed(self):
+        now = time.monotonic()
+        if now - self._last_clock_read < 15:
+            return False
+        self._last_clock_read = now
+        return True
+
     def read_clock(self):
+        if not self._clock_read_allowed():
+            return
+        now = clocks.now()
+        forms = (
+            (("godzina", "godziny", "godzin"), now.hour),
+            (("minuta", "minuty", "minut"), now.minute),
+            (("sekunda", "sekundy", "sekund"), now.second),
+        )
+        parts = []
+        for (singular, paucal, plural), value in forms:
+            last_two = value % 100
+            form = singular if value % 10 == 1 and last_two != 11 else (
+                paucal if value % 10 in (2, 3, 4) and last_two not in (12, 13, 14)
+                else plural)
+            parts.append(f"{value} {form}")
+        self.clock_speech.say(", ".join(parts) + ".")
+
+    def read_date(self):
+        if not self._clock_read_allowed():
+            return
         now = clocks.now()
         season = clocks.plan.SEASONS[clocks.plan.current_season(now.date())[0]][1].lower()
-        text = (f"Jest godzina {now:%H:%M} i {now.second} sekund. "
-                f"Dzisiaj jest {now.day} {clocks.MONTHS[now.month - 1]}. "
-                f"Pora roku: {season}.")
-        self.clock_speech.say(text)
+        self.clock_speech.say(
+            f"Dzisiaj jest {now.day} {clocks.MONTHS[now.month - 1]}. Pora roku: {season}.")
 
     def _update_battery(self, _dt):
         info = device.battery()
         level = info.get("level") if info else None
         self.battery_text = f"{level}%" if isinstance(level, int) else ""
+
+    def open_photo(self, position: int):
+        self.root.ids.sm.get_screen("photos").start_position = position
+        self.nav("photos")
 
     # --- menu -------------------------------------------------------------------------
     def nav(self, target: str):
@@ -198,6 +229,9 @@ class DzieciApp(GamesHost, App):
         games - siatka gier, inna nazwa - ekran gry (tictactoe, checkers, chess, paint)."""
         if target == "exit":            # wyjście z aplikacji (okno, 3 razy „Tak”)
             kiosklock.ask_exit()
+            return
+        if target == "screensaver":
+            self.screensaver.blank()
             return
         if target == "voice":
             VoiceDialog().open()
