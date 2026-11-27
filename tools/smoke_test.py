@@ -124,9 +124,34 @@ def dots(canvas):
     return sum(1 for i in canvas.children if isinstance(i, Ellipse) and i.size[0] < 40)
 
 
+def lines(canvas):
+    from kivy.graphics import Line
+    return sum(1 for i in canvas.children if isinstance(i, Line) and i.width == 2)
+
+
 def check(cond, text):
     if not cond:
         ERRORS.append("SPRAWDZENIE: " + text)
+
+
+def test_clock_readout(app):
+    class Capture:
+        text = ""
+
+        def say(self, text):
+            self.text = text
+
+    original_now, original_speech = main.clocks.now, app.clock_speech
+    speaker = Capture()
+    try:
+        main.clocks.now = lambda: datetime(2026, 1, 2, 3, 4, 5)
+        app.clock_speech = speaker
+        app.read_clock()
+    finally:
+        main.clocks.now, app.clock_speech = original_now, original_speech
+    check(speaker.text == "Jest godzina 03:04 i 5 sekund. Dzisiaj jest 2 stycznia. "
+                          "Pora roku: zima.",
+          f"nieprawidłowy odczyt czasu: {speaker.text!r}")
 
 
 class FakeTouch:
@@ -175,6 +200,15 @@ class Smoke(main.DzieciApp):
             lambda: check(sm.current == "start" and self.root.ids.rail.opacity == 1
                           and self.root.ids.rail.width == 128,
                           "pasek boczny nie jest widoczny na ekranie głównym"),
+            lambda: check(len(self.clock_time_text) == 8
+                          and self.clock_time_text[2] == ":"
+                          and self.clock_time_text[5] == ":"
+                          and " • " in self.clock_date_text,
+                          "na ekranie głównym brakuje czasu 24-godzinnego albo daty i pory roku"),
+            lambda: check(any(getattr(w, "text", "") == "Sprawdź"
+                              for w in sm.get_screen("start").walk()),
+                          "brak przycisku Sprawdź na ekranie głównym"),
+            lambda: test_clock_readout(self),
             lambda: self.nav("games"),
             lambda: check(self.root.ids.rail.opacity == 0 and self.root.ids.rail.width == 0
                           and self.root.ids.rail.disabled,
@@ -204,6 +238,16 @@ class Smoke(main.DzieciApp):
             lambda: check(dots(GAMES["chess"].canvas.after) == 0,
                           "szachy pokazują podpowiedzi w turze przeciwnika"),
             lambda: GAMES["chess"].set_mode(1),
+            lambda: GAMES["chess"].set_mode(2),
+            lambda: check(GAMES["chess"].show_hints
+                          and lines(GAMES["chess"].canvas.before)
+                          == len({(m[0], m[1]) for m in GAMES["chess"].moves}),
+                          "szachy: brak podświetlenia figur z legalnymi ruchami"),
+            lambda: [GAMES["chess"].new_game(), GAMES["chess"].tap(6, 4)],
+            lambda: check(GAMES["chess"].show_hints
+                          and dots(GAMES["chess"].canvas.after) == 2,
+                          "szachy: brak podpowiedzi w trybie dwóch graczy"),
+            lambda: GAMES["chess"].set_mode(1),
             lambda: GAMES["checkers"].set_mode(1),
             lambda: [GAMES["checkers"].new_game(), GAMES["checkers"].tap(5, 0)],
             lambda: check(dots(GAMES["checkers"].canvas) >= 1,
@@ -216,6 +260,15 @@ class Smoke(main.DzieciApp):
             lambda: GAMES["checkers"].tap(4, 1),
             lambda: check(dots(GAMES["checkers"].canvas) == 0,
                           "warcaby pokazują podpowiedzi w turze przeciwnika"),
+            lambda: GAMES["checkers"].set_mode(2),
+            lambda: check(GAMES["checkers"].show_hints
+                          and lines(GAMES["checkers"].canvas)
+                          == len({m["path"][0] for m in GAMES["checkers"].moves}),
+                          "warcaby: brak podświetlenia pionków z legalnymi ruchami"),
+            lambda: [GAMES["checkers"].new_game(), GAMES["checkers"].tap(5, 0)],
+            lambda: check(GAMES["checkers"].show_hints
+                          and dots(GAMES["checkers"].canvas) >= 1,
+                          "warcaby: brak podpowiedzi w trybie dwóch graczy"),
             lambda: GAMES["checkers"].set_mode(1),
             # wybór strony w szachach poprzedza wysłanie zaproszenia i oczekiwanie
             lambda: self.nav("chess"),

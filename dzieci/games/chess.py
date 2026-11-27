@@ -28,6 +28,7 @@ DARK = (0.55, 0.38, 0.24, 1)
 LAST = (1.0, 0.85, 0.20, 0.35)
 SELECT = (1.0, 0.85, 0.20, 1)
 TARGET = (0.30, 0.80, 0.35, 0.85)
+MOVABLE = (0.30, 0.80, 0.35, 0.85)
 CHECK = (0.90, 0.20, 0.20, 0.6)
 KNIGHT = [(-2, -1), (-2, 1), (-1, -2), (-1, 2), (1, -2), (1, 2), (2, -1), (2, 1)]
 KING = [(-1, -1), (-1, 0), (-1, 1), (0, -1), (0, 1), (1, -1), (1, 0), (1, 1)]
@@ -206,6 +207,10 @@ class Chess(BoardWidget):
     def current_side(self):
         return 0 if self.state["turn"] == "w" else 1
 
+    @property
+    def show_hints(self):
+        return self.human_turn() and not self.finished
+
     def refresh_status(self):
         if self.finished:
             return
@@ -291,6 +296,11 @@ class Chess(BoardWidget):
             if in_check(self.state, color):
                 Color(*CHECK)
                 Rectangle(pos=self.cell_pos(*king_pos(board, color)), size=(c, c))
+            if self.show_hints:
+                Color(*MOVABLE)
+                for r, col in {(m[0], m[1]) for m in self.moves}:
+                    x, y = self.cell_pos(r, col)
+                    Line(rectangle=(x + 2, y + 2, c - 4, c - 4), width=2)
             if self.selected is not None:
                 Color(*SELECT)
                 x, y = self.cell_pos(*self.selected)

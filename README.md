@@ -38,6 +38,11 @@ Trzy zegary:
 Menu po prawej: dom (powrót do ekranu startowego), godzina HH:MM, data D-M i słuchawka -
 wiadomości głosowe przez Home Assistant, tak samo jak w kiosku w holu.
 
+Nad zegarem analogowym widać godzinę HH:MM:SS w formacie 24-godzinnym, a nad zegarem pór
+roku - dzień, nazwę miesiąca i aktualną porę roku. Przycisk „Sprawdź” odczytuje te
+informacje po polsku przez syntezator mowy Androida. Pod lewym zegarem są skróty do
+odtwarzania/pauzy i zatrzymania muzyki, suwak głośności oraz ręczne wygaszanie ekranu.
+
 ## Budowanie
 
 ```
@@ -67,8 +72,9 @@ Przycisk z padem w menu po prawej otwiera siatkę gier; w każdej grze u góry j
   Wyjście z gry albo „Nowa gra” kończy partię u obu graczy.
 - **Warcaby** (8x8) i **Szachy** - przyciski z jedną głową (1 gracz, gra z komputerem
   na poziomie łatwym; dziecko gra białymi) albo dwiema głowami (2 graczy na zmianę, na dole
-  napis, czyja kolej). Stuknięcie pionka lub figury pokazuje zielone kropki na
-  dozwolonych polach; dopiero stuknięcie w pole z kropką przesuwa pionek.
+  napis, czyja kolej). Podczas tury gracza podświetlone są figury/pionki mogące wykonać
+  ruch; stuknięcie pionka lub figury pokazuje zielone kropki na dozwolonych polach.
+  Dopiero stuknięcie w pole z kropką przesuwa pionek.
   - Warcaby: bicie obowiązkowe i wielokrotne, pionki biją też do tyłu, damka „latająca”.
     Uproszczenie: nie trzeba wybierać bicia z największą liczbą pionków. Komputer
     wybiera losowy dozwolony ruch, chętniej z promocją na damkę.

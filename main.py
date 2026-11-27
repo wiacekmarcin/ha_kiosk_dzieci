@@ -44,10 +44,11 @@ from kivy.app import App  # noqa: E402
 from kivy.clock import Clock  # noqa: E402
 from kivy.core.window import Window  # noqa: E402
 from kivy.lang import Builder  # noqa: E402
-from kivy.properties import StringProperty  # noqa: E402
+from kivy.properties import NumericProperty, StringProperty  # noqa: E402
 
 from dzieci import clocks  # noqa: E402 - klasy zegarów dla ekran.kv
 from dzieci.announce import DayAnnouncer  # noqa: E402
+from dzieci.speech import ClockSpeech  # noqa: E402
 from dzieci.games import chess, checkers, dice, dots, football, paint, pdots, ships, snake, tetris, tictactoe  # noqa: E402,F401 - klasy gier dla gry.kv
 from dzieci.games.board import DotStatus  # noqa: E402,F401 - widżet statusu dla gry.kv
 from dzieci.games.host import GamesHost  # noqa: E402
@@ -96,6 +97,9 @@ class DzieciApp(GamesHost, App):
     section = StringProperty("home")     # podświetlenie w menu (widgets.kv z kiosku)
     time_text = StringProperty("")
     date_text = StringProperty("")
+    clock_time_text = StringProperty("")
+    clock_date_text = StringProperty("")
+    volume_value = NumericProperty(50)
     voice_last = StringProperty("")
     tablet_name = StringProperty("Tablet dzieci")
     child_name = StringProperty("")     # imię dziecka pod zegarami (tablet.json)
@@ -113,6 +117,8 @@ class DzieciApp(GamesHost, App):
         self.voice = None
         self.voice_recorder = voice.Recorder()
         self.voice_player = voice.Player()
+        self.clock_speech = ClockSpeech()
+        self.volume_value = device.volume()
         # komunikat głosowy przy zmianie pory dnia ("Czas na śniadanie")
         self.announcer = DayAnnouncer(self.voice_player)
         self.music = MusicPlayer(self.voice_player)    # ekran Muzyka
@@ -145,6 +151,8 @@ class DzieciApp(GamesHost, App):
             Clock.schedule_once(lambda _dt: self._screenshot(shot), 2.5)
         else:
             kiosklock.lock()            # tryb kiosku: Home i lista aplikacji nie wyprowadzają
+        from kiosk.screensaver import ScreenSaver
+        self.screensaver = ScreenSaver(lambda: self.nav("home"))
 
     def _screenshot(self, path):
         Window.screenshot(name=path)
@@ -163,6 +171,21 @@ class DzieciApp(GamesHost, App):
         now = clocks.now()
         self.time_text = now.strftime("%H:%M")
         self.date_text = f"{now.day}-{now.month}"
+        self.clock_time_text = now.strftime("%H:%M:%S")
+        season = clocks.plan.SEASONS[clocks.plan.current_season(now.date())[0]][1]
+        self.clock_date_text = f"{now.day} {clocks.MONTHS[now.month - 1]} • {season}"
+
+    def set_music_volume(self, value):
+        device.set_volume(value)
+        self.volume_value = device.volume()
+
+    def read_clock(self):
+        now = clocks.now()
+        season = clocks.plan.SEASONS[clocks.plan.current_season(now.date())[0]][1].lower()
+        text = (f"Jest godzina {now:%H:%M} i {now.second} sekund. "
+                f"Dzisiaj jest {now.day} {clocks.MONTHS[now.month - 1]}. "
+                f"Pora roku: {season}.")
+        self.clock_speech.say(text)
 
     def _update_battery(self, _dt):
         info = device.battery()

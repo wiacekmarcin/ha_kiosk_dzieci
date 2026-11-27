@@ -158,6 +158,10 @@ class Checkers(BoardWidget):
     def current_side(self):
         return self.player
 
+    @property
+    def show_hints(self):
+        return self.human_turn() and not self.finished
+
     def refresh_status(self):
         if self.finished:
             return

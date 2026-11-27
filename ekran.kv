@@ -43,6 +43,50 @@
     size_hint_y: None
     height: 60
 
+<HomeControlButton@ButtonBehavior+AnchorLayout>:
+    code: 0
+    size_hint: None, None
+    size: 54, 54
+    canvas.before:
+        Color:
+            rgba: (0.30, 0.36, 0.52, 1) if self.state == "down" else (0.20, 0.24, 0.36, 1)
+        Ellipse:
+            pos: self.pos
+            size: self.size
+    Label:
+        text: chr(root.code) if root.code else ""
+        font_name: icons.FONT_NAME
+        font_size: "34sp"
+        color: WARM
+        size_hint: None, None
+        size: self.texture_size
+
+<ReadClockButton@ButtonBehavior+BoxLayout>:
+    orientation: "horizontal"
+    size_hint: None, None
+    size: 156, 56
+    padding: [10, 4]
+    spacing: 8
+    canvas.before:
+        Color:
+            rgba: (0.30, 0.36, 0.52, 1) if self.state == "down" else (0.20, 0.24, 0.36, 1)
+        RoundedRectangle:
+            pos: self.pos
+            size: self.size
+            radius: [20]
+    Label:
+        text: chr(0xF057E)
+        font_name: icons.FONT_NAME
+        font_size: "30sp"
+        color: WARM
+        size_hint_x: None
+        width: 34
+    Label:
+        text: "Sprawdź"
+        font_size: "20sp"
+        bold: True
+        color: TEXT
+
 BoxLayout:
     orientation: "horizontal"
 
@@ -56,6 +100,9 @@ BoxLayout:
                 BoxLayout:
                     orientation: "vertical"
                     spacing: 14
+                    ReadClockButton:
+                        pos_hint: {"center_x": 0.5}
+                        on_release: app.read_clock()
                     Widget:
                     DayClock:
                         id: day
@@ -65,12 +112,44 @@ BoxLayout:
                         on_touch_down: app.announcer.say() if self.collide_point(*args[1].pos) else None
                     Caption:
                         text: day.caption
+                    BoxLayout:
+                        size_hint_y: None
+                        height: 62
+                        spacing: 4
+                        HomeControlButton:
+                            code: 0xF040A if (app.music.paused or not app.music.playing) else 0xF03E4
+                            on_release: app.music.toggle()
+                        HomeControlButton:
+                            code: 0xF04DB
+                            on_release: app.music.stop()
+                        Label:
+                            text: chr(0xF057E)
+                            font_name: icons.FONT_NAME
+                            font_size: "26sp"
+                            color: WARM
+                            size_hint_x: None
+                            width: 28
+                        Slider:
+                            min: 0
+                            max: 100
+                            value: app.volume_value
+                            on_value: app.set_music_volume(self.value)
+                        HomeControlButton:
+                            code: 0xF0379
+                            on_release: app.screensaver.blank()
                     Widget:
                 BoxLayout:
                     orientation: "vertical"
                     spacing: 14
                     size_hint_x: 1.12
                     Widget:
+                    Label:
+                        text: app.clock_time_text
+                        font_size: "34sp"
+                        bold: True
+                        color: TEXT
+                        size_hint_y: None
+                        height: 56
                     AnalogClock:
                         id: analog
                         size_hint_y: None
@@ -83,6 +162,13 @@ BoxLayout:
                     orientation: "vertical"
                     spacing: 14
                     Widget:
+                    Label:
+                        text: app.clock_date_text
+                        font_size: "28sp"
+                        bold: True
+                        color: TEXT
+                        size_hint_y: None
+                        height: 56
                     SeasonClock:
                         id: season
                         size_hint_y: None

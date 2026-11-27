@@ -19,6 +19,10 @@ from kivy.uix.widget import Widget
 from dzieci import plan
 
 ICONS = Path(__file__).resolve().parents[1] / "assets" / "icons"
+MONTHS = (
+    "stycznia", "lutego", "marca", "kwietnia", "maja", "czerwca",
+    "lipca", "sierpnia", "września", "października", "listopada", "grudnia",
+)
 
 FACE = (0.98, 0.97, 0.93, 1)
 INK = (0.16, 0.18, 0.25, 1)
