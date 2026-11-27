@@ -9,6 +9,7 @@ from datetime import datetime
 from pathlib import Path
 
 from kivy.clock import Clock
+from kiosk import ntp
 from kivy.graphics import (Color, Ellipse, Line, PopMatrix, PushMatrix, Rotate, Scale,
                            Translate, Triangle)
 from kivy.properties import NumericProperty, StringProperty
@@ -102,7 +103,7 @@ class ClockBase(Widget):
 def now() -> datetime:
     """Bieżący czas; DZIECI_NOW="2026-04-15 07:20" podstawia czas do podglądu na PC."""
     fake = os.environ.get("DZIECI_NOW")
-    return datetime.strptime(fake, "%Y-%m-%d %H:%M") if fake else datetime.now()
+    return datetime.strptime(fake, "%Y-%m-%d %H:%M") if fake else ntp.now()
 
 
 # --- zegar analogowy --------------------------------------------------------------------

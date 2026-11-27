@@ -152,6 +152,8 @@ class DzieciApp(GamesHost, App):
         if shot:
             Clock.schedule_once(lambda _dt: self._screenshot(shot), 2.5)
         else:
+            if IS_ANDROID:
+                clocks.ntp.start()
             kiosklock.lock()            # tryb kiosku: Home i lista aplikacji nie wyprowadzają
         from kiosk.screensaver import ScreenSaver
         self.screensaver = ScreenSaver(lambda: self.nav("home"))

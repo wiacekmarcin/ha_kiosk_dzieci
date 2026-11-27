@@ -2,7 +2,7 @@
 title = Kiosk dzieci
 package.name = hakioskdzieci
 package.domain = pl.mieszkanie
-version = 0.38
+version = 0.39
 source.dir = .
 source.include_exts = py,png,kv,ttf,json,ogg,mp3
 source.exclude_dirs = tools, bin, .buildozer, __pycache__, .venv, venv
@@ -12,7 +12,7 @@ source.exclude_patterns = buildozer.spec, sync_kiosk.sh, README.md
 requirements = python3,kivy==2.3.1,requests,urllib3,certifi,charset-normalizer,idna,openssl
 orientation = landscape
 fullscreen = 1
-android.permissions = INTERNET, ACCESS_NETWORK_STATE, RECORD_AUDIO, WAKE_LOCK, ACCESS_WIFI_STATE, CHANGE_WIFI_MULTICAST_STATE, CAMERA
+android.permissions = INTERNET, ACCESS_NETWORK_STATE, RECORD_AUDIO, WAKE_LOCK, ACCESS_WIFI_STATE, CHANGE_WIFI_MULTICAST_STATE, CAMERA, WRITE_SECURE_SETTINGS, cyanogenmod.permission.WRITE_SECURE_SETTINGS
 # tryb kiosku jako właściciel urządzenia (dzieci/kiosklock.py): odbiornik administratora
 # urządzenia. Szablon manifestu python-for-android nie ma miejsca na <receiver>, więc
 # element wchodzi przez wpis uses-library (dwie opcjonalne biblioteki "kiosk.*" na brzegach).
