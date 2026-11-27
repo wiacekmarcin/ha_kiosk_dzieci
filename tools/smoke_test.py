@@ -164,6 +164,42 @@ def test_clock_readout(app):
     ], f"nieprawidłowy odczyt zegara albo limit 15 s: {speaker.samples!r}")
 
 
+def test_music_volume(app):
+    original_volume = main.device.volume
+    original_set_volume = main.device.set_volume
+    original_value = app.volume_value
+    current = [50]
+
+    def set_volume(value):
+        current[0] = max(0, min(100, round(value)))
+
+    try:
+        main.device.volume = lambda: current[0]
+        main.device.set_volume = set_volume
+        app.volume_value = 5
+        app.adjust_music_volume(-10)
+        lower = app.volume_value
+        app.volume_value = 95
+        app.adjust_music_volume(10)
+        upper = app.volume_value
+    finally:
+        main.device.volume = original_volume
+        main.device.set_volume = original_set_volume
+        app.volume_value = original_value
+    check(lower == 0 and upper == 100,
+          f"przyciski głośności nie ograniczają poziomu do 0-100: {lower}, {upper}")
+
+
+def test_music_controls_layout(app):
+    screen = app.root.ids.sm.get_screen("start")
+    controls = app.root.ids.music_controls
+    analog = app.root.ids.analog
+    symbols = {getattr(child, "symbol", "") for child in controls.children}
+    check(symbols >= {"−", "+"} and controls.y < analog.y
+          and abs(controls.center_x - screen.center_x) < 40,
+          "sterowanie muzyką nie jest wyśrodkowane pod zegarem albo brakuje przycisków głośności")
+
+
 class FakeTouch:
     """Dotyk do testu rysowania (pozycja, słownik ud, grab jak w Kivy)."""
     def __init__(self, x, y):
@@ -219,6 +255,8 @@ class Smoke(main.DzieciApp):
                               for w in sm.get_screen("start").walk()),
                           "brak przycisku Sprawdź na ekranie głównym"),
             lambda: test_clock_readout(self),
+            lambda: test_music_volume(self),
+            lambda: test_music_controls_layout(self),
             lambda: self.nav("gallery"),
             None,
             lambda: check(sm.current == "gallery" and self.root.ids.rail.width == 0

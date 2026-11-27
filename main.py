@@ -181,6 +181,9 @@ class DzieciApp(GamesHost, App):
         device.set_volume(value)
         self.volume_value = device.volume()
 
+    def adjust_music_volume(self, delta):
+        self.set_music_volume(max(0, min(100, self.volume_value + delta)))
+
     def _clock_read_allowed(self):
         now = time.monotonic()
         if now - self._last_clock_read < 15:

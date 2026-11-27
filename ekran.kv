@@ -61,6 +61,24 @@
         size_hint: None, None
         size: self.texture_size
 
+<VolumeControlButton@ButtonBehavior+AnchorLayout>:
+    symbol: ""
+    size_hint: None, None
+    size: 54, 54
+    canvas.before:
+        Color:
+            rgba: (0.30, 0.36, 0.52, 1) if self.state == "down" else (0.20, 0.24, 0.36, 1)
+        Ellipse:
+            pos: self.pos
+            size: self.size
+    Label:
+        text: root.symbol
+        font_size: "36sp"
+        bold: True
+        color: WARM
+        size_hint: None, None
+        size: self.texture_size
+
 <ReadClockButton@ButtonBehavior+BoxLayout>:
     orientation: "horizontal"
     size_hint: None, None
@@ -122,21 +140,6 @@ BoxLayout:
                         on_touch_down: app.announcer.say() if self.collide_point(*args[1].pos) else None
                     Caption:
                         text: day.caption
-                    BoxLayout:
-                        size_hint_y: None
-                        height: 62
-                        spacing: 4
-                        HomeControlButton:
-                            code: 0xF040A if (app.music.paused or not app.music.playing) else 0xF03E4
-                            on_release: app.music.toggle()
-                        HomeControlButton:
-                            code: 0xF04DB
-                            on_release: app.music.stop()
-                        Slider:
-                            min: 0
-                            max: 100
-                            value: app.volume_value
-                            on_value: app.set_music_volume(self.value)
                     Widget:
                 BoxLayout:
                     orientation: "vertical"
@@ -153,6 +156,28 @@ BoxLayout:
                     Caption:
                         text: analog.caption
                         color: TEXT
+                    BoxLayout:
+                        id: music_controls
+                        size_hint_y: None
+                        height: 62
+                        spacing: 4
+                        HomeControlButton:
+                            code: 0xF040A if (app.music.paused or not app.music.playing) else 0xF03E4
+                            on_release: app.music.toggle()
+                        HomeControlButton:
+                            code: 0xF04DB
+                            on_release: app.music.stop()
+                        VolumeControlButton:
+                            symbol: "−"
+                            on_release: app.adjust_music_volume(-10)
+                        Slider:
+                            min: 0
+                            max: 100
+                            value: app.volume_value
+                            on_value: app.set_music_volume(self.value)
+                        VolumeControlButton:
+                            symbol: "+"
+                            on_release: app.adjust_music_volume(10)
                     Widget:
                 BoxLayout:
                     orientation: "vertical"

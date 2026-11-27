@@ -45,9 +45,9 @@ odczytuje dzień, miesiąc i porę roku. Odczyty są ograniczone do jednego na 1
 Polskie komunikaty godziny i daty są odtwarzane z lokalnych próbek w `assets/clock_audio`,
 więc działają bez polskiego głosu w systemowym syntezatorze Androida. Próbki generuje
 `tools/make_clock_sounds.py` (edge-tts, głos pl-PL-ZofiaNeural).
-Pod lewym zegarem są skróty do odtwarzania/pauzy i zatrzymania muzyki oraz suwak
-głośności; wygaszacz jest w menu po prawej. Imię dziecka jest wyświetlane u góry,
-na środku ekranu.
+Na dole, pod środkowym zegarem, są skróty do odtwarzania/pauzy i zatrzymania muzyki,
+suwak głośności oraz przyciski zmiany głośności; wygaszacz jest w menu po prawej.
+Imię dziecka jest wyświetlane u góry, na środku ekranu.
 
 Galeria pod ikoną aparatu pokazuje do 10 miniatur naraz. Przyciski `−10`/`+10` i
 `−50`/`+50` przesuwają widok po zdjęciach; dotknięcie miniatury otwiera pełne zdjęcie.
