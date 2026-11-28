@@ -79,6 +79,23 @@
         size_hint: None, None
         size: self.texture_size
 
+<AutoButton@ButtonBehavior+Label>:
+    # jasność automatyczna (czujnik światła); włączona - podświetlona na żółto
+    active: False
+    size_hint: None, None
+    size: 86, 54
+    text: "Auto"
+    font_size: "21sp"
+    bold: True
+    color: (0.10, 0.12, 0.19, 1) if self.active else WARM
+    canvas.before:
+        Color:
+            rgba: WARM if self.active else ((0.30, 0.36, 0.52, 1) if self.state == "down" else (0.20, 0.24, 0.36, 1))
+        RoundedRectangle:
+            pos: self.pos
+            size: self.size
+            radius: [27]
+
 <ReadClockButton@ButtonBehavior+BoxLayout>:
     orientation: "horizontal"
     size_hint: None, None
@@ -123,7 +140,8 @@ BoxLayout:
         Screen:
             name: "start"
             BoxLayout:
-                padding: [16, 0]
+                # u góry miejsce na imię dziecka (etykieta niżej, wysokość 66)
+                padding: [16, 66, 16, 0]
                 spacing: 18
                 BoxLayout:
                     orientation: "vertical"
@@ -178,6 +196,34 @@ BoxLayout:
                         VolumeControlButton:
                             symbol: "+"
                             on_release: app.adjust_music_volume(10)
+                    # jasność ekranu: -/+, suwak, Auto (czujnik światła) - dzieci/display.py
+                    BoxLayout:
+                        id: brightness_controls
+                        size_hint_y: None
+                        height: 62
+                        spacing: 4
+                        Label:
+                            # brightness-6 z Material Design Icons
+                            text: chr(0xF00DF)
+                            font_name: icons.FONT_NAME
+                            font_size: "34sp"
+                            color: WARM
+                            size_hint_x: None
+                            width: 46
+                        VolumeControlButton:
+                            symbol: "−"
+                            on_release: app.display.adjust(-10)
+                        Slider:
+                            min: 1
+                            max: 100
+                            value: app.display.brightness
+                            on_value: app.display.slider(self.value)
+                        VolumeControlButton:
+                            symbol: "+"
+                            on_release: app.display.adjust(10)
+                        AutoButton:
+                            active: app.display.auto
+                            on_release: app.display.toggle_auto()
                     Widget:
                 BoxLayout:
                     orientation: "vertical"
@@ -201,8 +247,8 @@ BoxLayout:
                 bold: True
                 color: WARM
                 size_hint: 1, None
-                height: 90
-                pos_hint: {"center_x": 0.5, "top": 0.98}
+                height: 66
+                pos_hint: {"center_x": 0.5, "top": 1}
         # gry - wspólne ekrany z dzieci/games/gry.kv
         GamesScreen:
         TicTacToeScreen:

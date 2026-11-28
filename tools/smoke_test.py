@@ -158,7 +158,7 @@ def test_clock_readout(app):
         main.time.monotonic = original_monotonic
         app.clock_speech, app._last_clock_read = original_speech, original_last
     check(speaker.samples == [
-        ["hour_03.mp3", "minute_04.mp3", "second_05.mp3"],
+        ["hour_03.mp3", "minute_04.mp3"],       # „trzecia godzina cztery minuty”, bez sekund
         ["today.mp3", "day_02.mp3", "month_01.mp3", "season_intro.mp3",
          "season_zima.mp3"],
     ], f"nieprawidłowy odczyt zegara albo limit 15 s: {speaker.samples!r}")

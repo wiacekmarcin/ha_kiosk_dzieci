@@ -45,11 +45,13 @@ from kivy.app import App  # noqa: E402
 from kivy.clock import Clock  # noqa: E402
 from kivy.core.window import Window  # noqa: E402
 from kivy.lang import Builder  # noqa: E402
+from kivy.logger import Logger  # noqa: E402
 from kivy.properties import NumericProperty, StringProperty  # noqa: E402
 
 from dzieci import clocks  # noqa: E402 - klasy zegarów dla ekran.kv
 from dzieci.announce import DayAnnouncer  # noqa: E402
 from dzieci.speech import ClockSpeech  # noqa: E402
+from dzieci.display import Display  # noqa: E402
 from dzieci.games import chess, checkers, dice, dots, football, paint, pdots, ships, snake, tetris, tictactoe  # noqa: E402,F401 - klasy gier dla gry.kv
 from dzieci.games.board import DotStatus  # noqa: E402,F401 - widżet statusu dla gry.kv
 from dzieci.games.host import GamesHost  # noqa: E402
@@ -124,10 +126,11 @@ class DzieciApp(GamesHost, App):
         # komunikat głosowy przy zmianie pory dnia ("Czas na śniadanie")
         self.announcer = DayAnnouncer(self.voice_player)
         self.music = MusicPlayer(self.voice_player)    # ekran Muzyka
+        self.display = Display()                        # jasność (suwak, Auto) i wygaszanie
         settings = load_settings()
         # tablet.json (install.sh): imię dziecka pod zegarami i nazwa tabletu w sieci -
         # oba tablety dzieci mają ten sam APK, a w sieci muszą mieć różne nazwy
-        self.child_name = settings.get("child", "")
+        self.child_name = self._child_name(settings)
         self.tablet_name = settings.get("tablet_name") or (
             f"Tablet {self.child_name}" if self.child_name else self.tablet_name)
         if settings.get("url") and settings.get("token") and not os.environ.get("DZIECI_SCREENSHOT"):
@@ -147,6 +150,26 @@ class DzieciApp(GamesHost, App):
         # ekran.kv celowo nie nazywa się dzieci.kv - Kivy wczytałby go sam przed build()
         return Builder.load_file(str(HERE / "ekran.kv"))
 
+    def _child_name(self, settings: dict) -> str:
+        """Imię dziecka z tablet.json (install.sh); kopia w danych aplikacji, bo tablet.json
+        leży w pamięci współdzielonej, która może zniknąć (wymiana karty, czyszczenie pamięci,
+        niezamontowana pamięć) - wtedy imię zostaje z kopii."""
+        copy = Path(self.user_data_dir) / "tablet_kopia.json"
+        name = str(settings.get("child") or "").strip()
+        if name:
+            try:
+                if _read_json(copy) != {"child": name}:
+                    copy.write_text(json.dumps({"child": name}, ensure_ascii=False), encoding="utf-8")
+            except OSError as e:
+                Logger.warning(f"Tablet: nie zapisano kopii imienia: {e}")
+            return name
+        saved = _read_json(copy)
+        name = str(saved.get("child") or "") if isinstance(saved, dict) else ""
+        if name:
+            Logger.warning(f"Tablet: brak tablet.json - imię z kopii: {name}")
+            settings.setdefault("child", name)
+        return name
+
     def on_start(self):
         shot = os.environ.get("DZIECI_SCREENSHOT")
         if shot:
@@ -157,6 +180,8 @@ class DzieciApp(GamesHost, App):
             kiosklock.lock()            # tryb kiosku: Home i lista aplikacji nie wyprowadzają
         from kiosk.screensaver import ScreenSaver
         self.screensaver = ScreenSaver(lambda: self.nav("home"))
+        # wygaszanie: 10 minut bez dotyku (piosenka liczy się jak dotyk) albo zamknięta klapka
+        self.display.attach_saver(self.screensaver)
 
     def _screenshot(self, path):
         Window.screenshot(name=path)

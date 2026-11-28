@@ -1,4 +1,8 @@
-"""Odczyt zegara z lokalnych próbek polskiego głosu."""
+"""Odczyt zegara z lokalnych próbek polskiego głosu (tools/make_clock_sounds.py).
+
+Godzina: „jedenasta godzina trzydzieści dwie minuty” (bez sekund; pełna godzina - bez
+minut). Data: „Dzisiaj jest dwudziestego ósmego listopada, pora roku jesień”.
+"""
 from pathlib import Path
 
 from kivy.logger import Logger
@@ -8,17 +12,19 @@ from dzieci import plan
 AUDIO = Path(__file__).resolve().parents[1] / "assets" / "clock_audio"
 
 
+def time_samples(now) -> list:
+    samples = [f"hour_{now.hour:02d}.mp3"]
+    if now.minute:
+        samples.append(f"minute_{now.minute:02d}.mp3")
+    return samples
+
+
 class ClockSpeech:
     def __init__(self, player):
         self.player = player
 
     def say_time(self, now):
-        samples = [
-            f"hour_{now.hour:02d}.mp3",
-            f"minute_{now.minute:02d}.mp3",
-            f"second_{now.second:02d}.mp3",
-        ]
-        self._play(samples)
+        self._play(time_samples(now))
 
     def say_date(self, now):
         season = plan.SEASONS[plan.current_season(now.date())[0]][0]
